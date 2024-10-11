@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.widgets import TextBox
 import random
-from routing import Pathfinder
+from pathfinding import Pathfinder
 
 def plot_graph(node_count, ax):
     edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 

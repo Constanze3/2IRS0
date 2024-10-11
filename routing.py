@@ -18,9 +18,9 @@ def route(nodes: List, edges: List, end: Node) -> Dict[Node, List]:
         if not tab[v]:
            return
        
-        d_min = c_w + min(tab[v], key=lambda d_v, _, _: d_v).value
+        d_min = c_w + min(tab[v], key=lambda d_v, p_v, de_v: d_v).value
 
-        for d_v, _, de_v in tab[v]:
+        for d_v, p_v, de_v in tab[v]:
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
 
@@ -28,7 +28,7 @@ def route(nodes: List, edges: List, end: Node) -> Dict[Node, List]:
             new_tab = []
 
             for entry in tab[u]:
-                d_u, _, de_u = entry
+                d_u, p_u, de_u = entry
                 if not d_u < d and de_u < de:
                     new_tab.append(entry)
                 if d_u <= d and de_u < de:

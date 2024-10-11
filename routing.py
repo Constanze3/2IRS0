@@ -1,52 +1,46 @@
-from math import inf, isinf
-from heapq import heappush, heappop
-from typing import Any, Mapping, Tuple, List
+from typing import Any, Mapping, Tuple, List, Dict
 
 Node = Any
-Edges = Mapping[Node, float]
+Edges = Mapping[Node, Tuple[float, float]]
 Graph = Mapping[Node, Edges]
 
-def dijkstra(graph: Graph, start: Node) -> Tuple[List, List]:
-    node_count = len(graph.keys())
+def route(nodes: List, edges: List, end: Node) -> Dict[Node, List]:
+    tab = {} 
 
-    handled = 0
-    deltas = {}
-    parents = {}
+    for node in nodes:
+        tab[node] = []
+    tab[end] = [(0, None, 0)]
 
-    heap = []
-    heappush(heap, (0, start, None))
+    def relax(edge):
+        global tab
+        u, v, c_w, c_t = edge
 
-    while heap:
-        delta, node, parent = heappop(heap) 
+        if not tab[v]:
+           return
+       
+        d_min = c_w + min(tab[v], key=lambda d_v, _, _: d_v).value
 
-        if handled == node_count:
-            break
+        for d_v, _, de_v in tab[v]:
+            d = max(d_min, c_t + d_v)
+            de = de_v + c_t
 
-        if node in deltas:
-            continue
+            insert = True
+            new_tab = []
 
-        deltas[node] = delta
-        parents[node] = parent
+            for entry in tab[u]:
+                d_u, _, de_u = entry
+                if not d_u < d and de_u < de:
+                    new_tab.append(entry)
+                if d_u <= d and de_u < de:
+                    insert = False
 
-        handled += 1
-
-        for neighbor, distance in graph[node].items():
-            heappush(heap, (delta + distance, neighbor, node))
+            if insert:
+                new_tab.append((d, v, de))
+            
+            tab[u] = new_tab
+                    
+    for node in range(len(nodes) - 1):
+        for edge in edges:
+            relax(edge)
     
-    return (deltas, parents)
-
-class Pathfinder:
-    def __init__(self, graph: Graph, start: Node) -> None:
-        deltas, parents = dijkstra(graph, start)
-        self.deltas = deltas
-        self.parents = parents
-    
-    def find_path(self, goal: Node):
-        path = []
-
-        node = goal
-        while node is not None:
-            path.append(node)
-            node = self.parents[node]
-
-        return path[::-1]
+    return tab

@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.widgets import TextBox
 import random
-
+from routing import Pathfinder
 
 def plot_graph(node_count, ax):
     edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 
@@ -16,7 +16,7 @@ def plot_graph(node_count, ax):
         typical_time = random.randint(1, overall_max_time)
         max_time = random.randint(typical_time, overall_max_time)
 
-        G.add_edge(u, v)
+        G.add_edge(u, v, length=typical_time)
         edge_labels[(u, v)] = (typical_time, max_time)
 
     possible_edges = [(i, j) for i in range(node_count) for j in range(node_count) if i != j]
@@ -36,9 +36,32 @@ def plot_graph(node_count, ax):
         edge = possible_edges.pop(index)
         create_edge(*edge)
 
+
+
+    G_for_pathfinding = {node: {key: next(iter(value.values())) for key, value in edge.items()} for node, edge in G.adjacency()}
+
+    pathfinder = Pathfinder(G_for_pathfinding, 0)
+    path = pathfinder.find_path(node_count - 1)
+
+    print(f"shortest path from {0} to {node_count - 1}")
+    print(path)
+
+    path_edges = []
+    for i in range(len(path) - 1):
+        path_edges.append((path[i], path[i + 1]))
+
+    colors = []
+    for edge in G.edges():
+        if edge in path_edges or edge[::-1] in path_edges:
+            colors.append("r")
+        else:
+            colors.append("b")
+    
     pos = nx.spring_layout(G)
-    nx.draw_networkx(G, pos, with_labels=True, ax=ax)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, ax=ax)
+    nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "length"), ax=ax)
+
+    
 
 node_count = 10
 
@@ -64,3 +87,4 @@ def onclick(event):
 fig.canvas.mpl_connect('button_press_event', onclick)
 
 plt.show()
+

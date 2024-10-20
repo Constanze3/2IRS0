@@ -73,7 +73,18 @@ def plot_graph(node_count, ax):
 
     # shut up
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
-    build_routing_tables(G_for_baruah, node_count - 1)
+    table = build_routing_tables(G_for_baruah, node_count - 1)
+
+    def format_node(node_tuples):
+        result = ""
+        for node_tuple in node_tuples:
+            result += f"{node_tuple}\n"
+        result += "\n"
+        return result
+
+
+    baruah_labels = {node: format_node(table[node]) for node in table}
+    nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
 
 
     

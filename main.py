@@ -4,6 +4,8 @@ from matplotlib.widgets import TextBox
 import random
 from pathfinding import Pathfinder
 
+from baruah import build_routing_tables
+
 def plot_graph(node_count, ax):
     edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 
     overall_max_time = 20
@@ -38,7 +40,8 @@ def plot_graph(node_count, ax):
 
 
 
-    G_for_pathfinding = {node: {key: next(iter(value.values())) for key, value in edge.items()} for node, edge in G.adjacency()}
+    # consider only the typical delay for pathfinding (index 0 of edge attributes)
+    G_for_pathfinding = {node: {key: list(value.values())[0] for key, value in edge.items()} for node, edge in G.adjacency()}
 
     pathfinder = Pathfinder(G_for_pathfinding, 0)
     path = pathfinder.find_path(node_count - 1)
@@ -61,6 +64,17 @@ def plot_graph(node_count, ax):
     nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
+
+    # baruah
+    # Node = Any
+    # # maps a node to a tuple of (typical delay, max delay)
+    # Edges = Mapping[Node, (float, float)]
+    # Graph = Mapping[Node, Edges]
+
+    # shut up
+    G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
+    build_routing_tables(G_for_baruah, node_count - 1)
+
 
     
 

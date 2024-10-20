@@ -5,19 +5,31 @@ Node = Any
 Edges = Mapping[Node, Tuple[float, float]]
 Graph = Mapping[Node, Edges]
 
-def build_routing_tables(graph: Graph, destination: Node) -> Mapping[Node, Set[Tuple[float, Node | None, float]]]:
+Table = Dict[Node, Set[Tuple[float, Node | None, float]]]
+
+def pretty_print_table(table: Table) -> None:
+    for i in range(len(table)):
+        print(f"Node {i}: {table[i]}")
+
+def build_routing_tables(graph: Graph, destination: Node) -> Table:
 
     # destination t: last elem of graph
     t = destination
 
-    table: Dict[Node, Set[Tuple[float, Node | None, float]]] = {}
+    table: Table = {}
     # INITIALIZE(G = (V, E))
     for node in graph.keys():
         table[node] = set()
     table[t] = {(0, None, 0)}
 
-    for u in graph.keys():
-        for v, weights in graph[u].items():
+    # create list of unique edges
+    edges = set()
+    for u, uedges in graph.items():
+        for v, weights in uedges.items():
+            edges.add((u, v, weights))
+
+    for _ in range(len(graph) - 1):
+        for u, v, weights in edges:
             # RELAX(u, v)
             if len(table[v]) == 0:
                 continue
@@ -28,7 +40,7 @@ def build_routing_tables(graph: Graph, destination: Node) -> Mapping[Node, Set[T
                 d = max(dmin, weights[0] + dv)
                 delta = deltav + weights[0]
                 insert = True # Should tuple (d, v, delta) be inserted into TAB[u]?
-                for du, piu, deltau in table[u]:
+                for du, piu, deltau in table[u].copy():
                     if du >= d and deltau >= delta:
                         # remove (du, piu, deltau) from TAB[u], since (d, v, delta) subsumes it
                         table[u] = table[u] - {(du, piu, deltau)}
@@ -38,6 +50,6 @@ def build_routing_tables(graph: Graph, destination: Node) -> Mapping[Node, Set[T
                     table[u] = table[u] | {(d, v, delta)}
 
     # print(table)
-    print(table)
+    pretty_print_table(table)
 
     return table

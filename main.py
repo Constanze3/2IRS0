@@ -78,7 +78,7 @@ def plot_graph(node_count, ax):
 
     
 
-node_count = 7
+node_count = 5
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)

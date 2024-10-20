@@ -16,7 +16,7 @@ def plot_graph(node_count, ax):
         typical_time = random.randint(1, overall_max_time)
         max_time = random.randint(typical_time, overall_max_time)
 
-        G.add_edge(u, v, length=typical_time)
+        G.add_edge(u, v, typical_delay=typical_time, max_delay=max_time)
         edge_labels[(u, v)] = (typical_time, max_time)
 
     possible_edges = [(i, j) for i in range(node_count) for j in range(node_count) if i != j]
@@ -59,11 +59,12 @@ def plot_graph(node_count, ax):
     
     pos = nx.spring_layout(G)
     nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "length"), ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
     
 
-node_count = 10
+node_count = 7
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)
@@ -74,8 +75,8 @@ def submit_nodes(count):
     global node_count
     node_count = int(count)
 
-axbox = plt.axes([0.5, 0.05, 0.3, 0.07])
-text_box = TextBox(axbox, "nodes: ", initial=node_count)
+axbox = plt.axes((0.5, 0.05, 0.3, 0.07))
+text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
 text_box.on_submit(submit_nodes)
 
 def onclick(event):

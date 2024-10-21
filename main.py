@@ -53,7 +53,7 @@ def plot_graph(node_count, ax):
     for i in range(len(path) - 1):
         path_edges.append((path[i], path[i + 1]))
 
-    colors = ["b" for edge in G.edges()]
+    colors = ["b"] * len(G.edges())
     
     pos = nx.spring_layout(G)
     nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)

@@ -86,7 +86,6 @@ def from_adjacency_matrix(matrix):
     for u, nodes in enumerate(matrix):
         for v, delays in enumerate(nodes[u:], start=u):
             if delays:
-                print((u, v))
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G
 
@@ -109,6 +108,9 @@ def baruah(G, ax, pos):
         return result
     baruah_labels = {node: format_node(table[node]) for node in table}
     nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
+
+
+
 
 node_count = 5
 time = 0

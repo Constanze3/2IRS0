@@ -1,6 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.widgets import TextBox
+from matplotlib.widgets import TextBox, RangeSlider, Button
 import random
 from pathfinding import Pathfinder
 
@@ -37,8 +37,6 @@ def plot_graph(node_count, ax):
         index = random.randrange(len(possible_edges))
         edge = possible_edges.pop(index)
         create_edge(*edge)
-
-
 
     # consider only the typical delay for pathfinding (index 0 of edge attributes)
     G_for_pathfinding = {node: {key: list(value.values())[0] for key, value in edge.items()} for node, edge in G.adjacency()}
@@ -81,9 +79,6 @@ def plot_graph(node_count, ax):
     baruah_labels = {node: format_node(table[node]) for node in table}
     nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
 
-
-    
-
 node_count = 5
 
 fig, ax = plt.subplots()
@@ -99,11 +94,18 @@ axbox = plt.axes((0.5, 0.05, 0.3, 0.07))
 text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
 text_box.on_submit(submit_nodes)
 
+def refresh(event):
+    ax.clear()
+    plot_graph(node_count, ax)
+    fig.canvas.draw()
+
+axbutton = plt.axes((0.25, 0.05, 0.1, 0.07))
+button = Button(axbutton, "refresh")
+button.on_clicked(refresh)
+
 def onclick(event):
     if 120 < event.y:
-        ax.clear()
-        plot_graph(node_count, ax)
-        fig.canvas.draw()
+        return
 
 fig.canvas.mpl_connect('button_press_event', onclick)
 

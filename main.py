@@ -1,6 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.widgets import TextBox, RangeSlider, Button
+from matplotlib.widgets import TextBox, Button, Slider
 import random
 from pathfinding import Pathfinder
 
@@ -86,22 +86,26 @@ plt.subplots_adjust(bottom=0.2)
 
 plot_graph(node_count, ax)
 
-def submit_nodes(count):
-    global node_count
-    node_count = int(count)
-
-axbox = plt.axes((0.5, 0.05, 0.3, 0.07))
-text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
-text_box.on_submit(submit_nodes)
-
 def refresh(event):
     ax.clear()
     plot_graph(node_count, ax)
     fig.canvas.draw()
 
-axbutton = plt.axes((0.25, 0.05, 0.1, 0.07))
-button = Button(axbutton, "refresh")
+axbutton = plt.axes((0.2, 0.05, 0.15, 0.07))
+button = Button(axbutton, "regenerate")
 button.on_clicked(refresh)
+
+def submit_nodes(count):
+    global node_count
+    node_count = int(count)
+
+axbox = plt.axes((0.45, 0.05, 0.07, 0.07))
+text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
+text_box.on_submit(submit_nodes)
+
+
+axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
+slider = Slider(axslider, "time", 0, 100, 0, valstep=1)
 
 def onclick(event):
     if 120 < event.y:

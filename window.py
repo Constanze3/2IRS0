@@ -1,11 +1,12 @@
 import tkinter as tk
 
-def routing_table_widget(root, node, routing_table, fg="black", bg="black", header_color="gray60", cell_color="white") -> tk.Frame:
+def routing_table_widget(root, node, destination, routing_table, fg="black", bg="black", header_color="gray60", cell_color="white") -> tk.Frame:
     frame = tk.Frame(root, width=200, bg=bg)
     frame.pack_propagate(False)
 
-    node_label = tk.Label(frame, text=str(node), bg=bg, fg=cell_color, font=("Arial", 20))
-    node_label.pack(side="top", pady=2)
+    label_text = f"{str(node)} >> {str(destination)}"
+    label = tk.Label(frame, text=label_text, bg=bg, fg=cell_color, font=("Arial", 20))
+    label.pack(side="top", pady=2)
 
     container = tk.Frame(frame)
     container.pack(padx=5, pady=2, anchor="nw", side="bottom", fill="both", expand=True)
@@ -67,13 +68,13 @@ def main():
 
     test_routing_table = [(1, 2, 3)] * 100
 
-    r1 = routing_table_widget(frame, 2, test_routing_table)
+    r1 = routing_table_widget(frame, 1, 2, test_routing_table)
     r1.grid(column=0, row=0, sticky="nsw", padx=5)
 
-    r2 = routing_table_widget(frame, 5, test_routing_table)
+    r2 = routing_table_widget(frame, 5, 6, test_routing_table)
     r2.grid(column=1, row=0, sticky="nsw", padx=5)
 
-    r3 = routing_table_widget(frame, 1, test_routing_table)
+    r3 = routing_table_widget(frame, 1, 5, test_routing_table)
     r3.grid(column=2, row=0, sticky="nsw", padx=5)
 
     # root.update()

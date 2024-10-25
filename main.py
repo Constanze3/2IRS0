@@ -1,8 +1,10 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.widgets import TextBox
+from matplotlib.widgets import TextBox, Button, Slider
 import random
 from pathfinding import Pathfinder
+
+from baruah import build_routing_tables
 
 def plot_graph(node_count, ax):
     edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 
@@ -16,7 +18,7 @@ def plot_graph(node_count, ax):
         typical_time = random.randint(1, overall_max_time)
         max_time = random.randint(typical_time, overall_max_time)
 
-        G.add_edge(u, v, length=typical_time)
+        G.add_edge(u, v, typical_delay=typical_time, max_delay=max_time)
         edge_labels[(u, v)] = (typical_time, max_time)
 
     possible_edges = [(i, j) for i in range(node_count) for j in range(node_count) if i != j]
@@ -36,9 +38,8 @@ def plot_graph(node_count, ax):
         edge = possible_edges.pop(index)
         create_edge(*edge)
 
-
-
-    G_for_pathfinding = {node: {key: next(iter(value.values())) for key, value in edge.items()} for node, edge in G.adjacency()}
+    # consider only the typical delay for pathfinding (index 0 of edge attributes)
+    G_for_pathfinding = {node: {key: list(value.values())[0] for key, value in edge.items()} for node, edge in G.adjacency()}
 
     pathfinder = Pathfinder(G_for_pathfinding, 0)
     path = pathfinder.find_path(node_count - 1)
@@ -50,39 +51,65 @@ def plot_graph(node_count, ax):
     for i in range(len(path) - 1):
         path_edges.append((path[i], path[i + 1]))
 
-    colors = []
-    for edge in G.edges():
-        if edge in path_edges or edge[::-1] in path_edges:
-            colors.append("r")
-        else:
-            colors.append("b")
+    colors = ["b"] * len(G.edges())
     
     pos = nx.spring_layout(G)
     nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "length"), ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
-    
+    # baruah
+    # Node = Any
+    # # maps a node to a tuple of (typical delay, max delay)
+    # Edges = Mapping[Node, (float, float)]
+    # Graph = Mapping[Node, Edges]
 
-node_count = 10
+    # shut up
+    G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
+    table = build_routing_tables(G_for_baruah, node_count - 1)
+
+    def format_node(node_tuples):
+        result = ""
+        for node_tuple in node_tuples:
+            result += f"{node_tuple}\n"
+        result += "\n"
+        return result
+
+
+    baruah_labels = {node: format_node(table[node]) for node in table}
+    nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
+
+node_count = 5
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.2)
 
 plot_graph(node_count, ax)
 
+def refresh(event):
+    ax.clear()
+    plot_graph(node_count, ax)
+    fig.canvas.draw()
+
+axbutton = plt.axes((0.2, 0.05, 0.15, 0.07))
+button = Button(axbutton, "regenerate")
+button.on_clicked(refresh)
+
 def submit_nodes(count):
     global node_count
     node_count = int(count)
 
-axbox = plt.axes([0.5, 0.05, 0.3, 0.07])
-text_box = TextBox(axbox, "nodes: ", initial=node_count)
+axbox = plt.axes((0.45, 0.05, 0.07, 0.07))
+text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
 text_box.on_submit(submit_nodes)
+
+
+axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
+slider = Slider(axslider, "time", 0, 100, 0, valstep=1)
 
 def onclick(event):
     if 120 < event.y:
-        ax.clear()
-        plot_graph(node_count, ax)
-        fig.canvas.draw()
+        return
 
 fig.canvas.mpl_connect('button_press_event', onclick)
 

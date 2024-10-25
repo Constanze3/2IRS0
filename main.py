@@ -103,9 +103,13 @@ def baruah(G, ax, pos, destinations=None):
         table = build_routing_tables(G_for_baruah, node)
 
         frame.grid_rowconfigure(node, weight=1)
+        col = 0
         for node2 in G_for_baruah.keys():
+            if node2 == node:
+                continue
             r = routing_table_widget(frame, node2, node, table[node2])
-            r.grid(column=node2, row=node, sticky="nsw", padx=5)
+            r.grid(column=col, row=node, sticky="nsw", padx=5)
+            col += 1
 
 
 def refresh(event):

@@ -1,5 +1,8 @@
 import tkinter as tk
 
+from matplotlib.backend_tools import cursors
+
+
 def routing_table_widget(root, node, destination, routing_table, fg="black", bg="black", header_color="gray60", cell_color="white") -> tk.Frame:
     frame = tk.Frame(root, width=200, bg=bg)
     frame.pack_propagate(False)
@@ -62,7 +65,7 @@ def main():
     root.title("Research")
     root.geometry("1200x600")
 
-    frame = tk.Frame(root, bg="gray60")
+    frame = tk.Frame(root, bg="gray60", cursor="arrow")
     frame.pack(anchor="nw", fill="both", expand=True)
     frame.grid_rowconfigure(0, weight=1)
 

@@ -20,7 +20,7 @@ def routing_table_widget(root, node, destination, routing_table, fg="black", bg=
     gap = tk.Frame(container, width=5, bg=bg)
     gap.pack(side="left", fill="y")
     
-    scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+    scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview, )
     scrollbar.pack(side="right", fill="y")
 
     table = tk.Frame(canvas)
@@ -36,14 +36,12 @@ def routing_table_widget(root, node, destination, routing_table, fg="black", bg=
     canvas.configure(yscrollcommand=scrollbar.set) 
     canvas.bind('<Configure>', on_configure)
 
-        
     def table_entry(column, row, text, color):
         entry = tk.Frame(table, bg=bg)
         entry.grid(column=column, row=row, sticky="nsew")
 
         label = tk.Label(entry, text=text, fg=fg, bg=color)
         label.pack(padx=2, pady=2, fill="x", expand=True)
-
 
     table_entry(0, 0, "d", header_color)
     table_entry(1, 0, "pi", header_color)
@@ -56,7 +54,6 @@ def routing_table_widget(root, node, destination, routing_table, fg="black", bg=
         table_entry(0, i, str(d), cell_color)
         table_entry(1, i, str(pi), cell_color)
         table_entry(2, i, str(delta), cell_color)
-
     
     return frame
 

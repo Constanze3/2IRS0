@@ -105,7 +105,7 @@ text_box.on_submit(submit_nodes)
 
 
 axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
-slider = Slider(axslider, "time", 0, 100, 0, valstep=1)
+slider = Slider(axslider, "time", 0, 100, valstep=1)
 
 def onclick(event):
     if 120 < event.y:

@@ -60,7 +60,7 @@ def from_adjacency_matrix(matrix):
     G = nx.Graph()
     G.add_nodes_from([0, len(matrix) - 1])
     for u, nodes in enumerate(matrix):
-        for v, delays in enumerate(nodes[u:], start=u):
+        for v, delays in enumerate(nodes):
             if delays:
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G
@@ -93,9 +93,15 @@ def baruah(G, ax, pos, destinations=None):
 
 
 def regenerate(event):
-    global graphs
+    global time, graphs, ax, pos, adj_matrix_frame
     graphs = generate_random_graph(node_count)
-    redraw()
+    ax.clear()
+    G = from_adjacency_matrix(graphs[time])
+    pos = nx.spring_layout(G)
+    plot_graph(G, ax, pos)
+    baruah(G, ax, pos)
+    fig.canvas.draw()
+    update_adj_matrix()
 
 def refresh(event):
     global graphs, time, adj_matrix, ax, pos
@@ -105,16 +111,6 @@ def refresh(event):
     plot_graph(G, ax, pos)
     baruah(G, ax, pos)
     fig.canvas.draw()
-
-def redraw():
-    global time, graphs, ax, pos, adj_matrix_frame
-    ax.clear()
-    G = from_adjacency_matrix(graphs[time])
-    pos = nx.spring_layout(G)
-    plot_graph(G, ax, pos)
-    baruah(G, ax, pos)
-    fig.canvas.draw()
-    update_adj_matrix(graphs[time], adj_matrix_frame)
 
 def submit_nodes(count):
     global node_count
@@ -128,6 +124,7 @@ def update_time(t):
     ax.clear()
     graph = from_adjacency_matrix(graphs[t])
     plot_graph(graph, ax, pos)
+    update_adj_matrix()
     baruah(graph, ax, pos)
     fig.canvas.draw()
 
@@ -146,8 +143,9 @@ def on_press(event):
         slider.set_val(time)
         update_time(time)
 
-def update_adj_matrix(matrix, adj_matrix_frame):
-    global adj_matrix
+def update_adj_matrix():
+    global adj_matrix, adj_matrix_frame, graphs, time
+    matrix = graphs[time]
     for widget in adj_matrix_frame.winfo_children():
         widget.destroy()
 
@@ -171,7 +169,7 @@ if __name__ == "__main__":
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
     adj_matrix_frame = tk.Frame(root)
-    adj_matrix_frame.pack(side=tk.BOTTOM, fill=tk.X)
+    adj_matrix_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
 
     graphs = generate_random_graph(node_count)
     G = from_adjacency_matrix(graphs[time])
@@ -179,7 +177,7 @@ if __name__ == "__main__":
     plot_graph(G, ax, pos)
     baruah(G, ax, pos)
 
-    update_adj_matrix(graphs[time], adj_matrix_frame)
+    update_adj_matrix()
 
     axbutton = plt.axes((0.15, 0.05, 0.1, 0.07))
     button = Button(axbutton, "new")

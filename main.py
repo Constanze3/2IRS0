@@ -71,18 +71,7 @@ def from_adjacency_matrix(matrix):
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G
 
-root = create_root()
-frame = create_frame(root)
 
-graph_frame = create_frame(root)
-
-node_count = 5
-time = 0
-fig, ax = plt.subplots()
-plt.subplots_adjust(bottom=0.2)
-
-canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
 def plot_graph(G, ax, pos):
     colors = ["b"] * len(G.edges())
@@ -110,28 +99,11 @@ def baruah(G, ax, pos):
         result += "\n"
         return result
     baruah_labels = {node: format_node(table[node]) for node in table}
-    # show_tables(baruah_labels)
-
-    # Table = Dict[Node, Set[Tuple[float, Node | None, float]]]
-    # we need an array of tuples for each node
-
-    # r0 = routing_table_widget(frame, 0, len(G_for_baruah.keys()) - 1, table[0])    # nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
-    # r0.grid(column=0, row=0, sticky="nsw", padx=5)
 
     for node in G_for_baruah.keys():
         r = routing_table_widget(frame, node, len(G_for_baruah.keys()) - 1, table[node])
         r.grid(column=node, row=0, sticky="nsw", padx=5)
 
-
-
-
-
-
-graphs = generate_random_graph(node_count)
-G = from_adjacency_matrix(graphs[time])
-pos = nx.spring_layout(G)
-plot_graph(G, ax, pos)
-baruah(G, ax, pos)
 
 def refresh(event):
     global time, graphs, graph, ax, pos
@@ -143,17 +115,9 @@ def refresh(event):
     baruah(G, ax, pos)
     fig.canvas.draw()
 
-axbutton = plt.axes((0.2, 0.05, 0.1, 0.07))
-button = Button(axbutton, "new")
-button.on_clicked(refresh)
-
 def submit_nodes(count):
     global node_count
     node_count = int(count)
-
-axbox = plt.axes((0.45, 0.05, 0.07, 0.07))
-text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
-text_box.on_submit(submit_nodes)
 
 def update_time(t):
     global time, graphs, graph, ax, pos
@@ -165,11 +129,6 @@ def update_time(t):
     plot_graph(graph, ax, pos)
     baruah(graph, ax, pos)
     fig.canvas.draw()
-
-
-axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
-slider = Slider(axslider, "time", 0, 100, valstep=1)
-slider.on_changed(update_time)
 
 def onclick(event):
     if 120 < event.y:
@@ -186,8 +145,43 @@ def on_press(event):
         slider.set_val(time)
         update_time(time)
 
-fig.canvas.mpl_connect('key_press_event', on_press)
-fig.canvas.mpl_connect('button_press_event', onclick)
+if __name__ == "__main__":
 
-# plt.show()
-root.mainloop()
+    root = create_root()
+    frame = create_frame(root)
+
+    graph_frame = create_frame(root)
+
+    node_count = 5
+    time = 0
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
+
+    canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+    canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+
+    graphs = generate_random_graph(node_count)
+    G = from_adjacency_matrix(graphs[time])
+    pos = nx.spring_layout(G)
+    plot_graph(G, ax, pos)
+    baruah(G, ax, pos)
+
+    axbutton = plt.axes((0.2, 0.05, 0.1, 0.07))
+    button = Button(axbutton, "new")
+    button.on_clicked(refresh)
+
+
+    axbox = plt.axes((0.45, 0.05, 0.07, 0.07))
+    text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
+    text_box.on_submit(submit_nodes)
+
+
+    axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
+    slider = Slider(axslider, "time", 0, 100, valstep=1)
+    slider.on_changed(update_time)
+
+    fig.canvas.mpl_connect('key_press_event', on_press)
+    fig.canvas.mpl_connect('button_press_event', onclick)
+
+    root.mainloop()

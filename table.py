@@ -9,7 +9,7 @@ class TKTable:
         for i in range(rows):
             self.make_cell(i, i+1, 0)
             row_cells = []
-            for j in range(columns):
+            for j in range(i, columns):
                 row_cells.append(
                     self.make_cell(str(table[i][j]), i+1, j+1, "blue")
                 )

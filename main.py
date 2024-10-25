@@ -60,7 +60,7 @@ def from_adjacency_matrix(matrix):
     G = nx.Graph()
     G.add_nodes_from([0, len(matrix) - 1])
     for u, nodes in enumerate(matrix):
-        for v, delays in enumerate(nodes):
+        for v, delays in enumerate(nodes[u:], start=u):
             if delays:
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G

@@ -18,8 +18,8 @@ def generate_random_graph(node_count, overall_max_time=20, max_t=100):
         [None for x in range(node_count)] for y in range(node_count)
     ]
     Gs = []
-    edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 
-    
+    edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2))
+
     def create_edge(u, v):
         typical_time = random.randint(1, overall_max_time)
         max_time = random.randint(typical_time, overall_max_time)
@@ -53,14 +53,8 @@ def generate_random_graph(node_count, overall_max_time=20, max_t=100):
             v = random.randint(0, node_count - 1)
         (expected_delay, max_delay) = G0[u][v]
         G0[u][v] = (random.randint(1, max_delay), max_delay)
-        # for u, nodes in enumerate(G):
-        #     for v, delays in enumerate(nodes):
-        #         if delays:
-        #             max_delay = delays[1]
-        #             G0[u][v] = (random.randint(1, max_delay), max_delay)
         Gs.append(G0)
     return Gs
-
 
 def from_adjacency_matrix(matrix):
     G = nx.Graph()
@@ -71,33 +65,19 @@ def from_adjacency_matrix(matrix):
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G
 
-
-
 def plot_graph(G, ax, pos):
     colors = ["b"] * len(G.edges())
     nx.draw_networkx(G, pos, with_labels=True, ax=ax, edge_color=colors)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
-def show_tables(tables):
-    index = 0
-    root = tk.Tk()
-    print(len(tables[index]))
-    t = TKTable(root, len(tables[index]), 1, tables[index])
-    root.mainloop()
-
-
-
 def baruah(G, ax, pos, destinations=None):
-    # frame = create_frame(root)
-    # reset previous frame
     for widget in frame.winfo_children():
         widget.destroy()
 
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
     if destinations is None:
         destinations = G_for_baruah.keys()
-        # destinations = [len(G_for_baruah) - 1]
 
     for node in destinations:
         table = build_routing_tables(G_for_baruah, node)
@@ -112,15 +92,29 @@ def baruah(G, ax, pos, destinations=None):
             col += 1
 
 
-def refresh(event):
-    global time, graphs, graph, ax, pos
-    ax.clear()
+def regenerate(event):
+    global graphs
     graphs = generate_random_graph(node_count)
+    redraw()
+
+def refresh(event):
+    global graphs, time, adj_matrix, ax, pos
+    graphs[time] = adj_matrix.get_values()
+    ax.clear()
+    G = from_adjacency_matrix(graphs[time])
+    plot_graph(G, ax, pos)
+    baruah(G, ax, pos)
+    fig.canvas.draw()
+
+def redraw():
+    global time, graphs, ax, pos, adj_matrix_frame
+    ax.clear()
     G = from_adjacency_matrix(graphs[time])
     pos = nx.spring_layout(G)
     plot_graph(G, ax, pos)
     baruah(G, ax, pos)
     fig.canvas.draw()
+    update_adj_matrix(graphs[time], adj_matrix_frame)
 
 def submit_nodes(count):
     global node_count
@@ -152,10 +146,19 @@ def on_press(event):
         slider.set_val(time)
         update_time(time)
 
-if __name__ == "__main__":
+def update_adj_matrix(matrix, adj_matrix_frame):
+    global adj_matrix
+    for widget in adj_matrix_frame.winfo_children():
+        widget.destroy()
 
+    adj_matrix = TKTable(adj_matrix_frame, len(matrix), len(matrix[0]), matrix)
+    adj_matrix_frame.pack()
+
+if __name__ == "__main__":
+    adj_matrix = None
     root = create_root()
     frame = create_frame(root)
+    
 
     graph_frame = create_frame(root)
 
@@ -167,6 +170,8 @@ if __name__ == "__main__":
     canvas = FigureCanvasTkAgg(fig, master=graph_frame)
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
+    adj_matrix_frame = tk.Frame(root)
+    adj_matrix_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
     graphs = generate_random_graph(node_count)
     G = from_adjacency_matrix(graphs[time])
@@ -174,15 +179,19 @@ if __name__ == "__main__":
     plot_graph(G, ax, pos)
     baruah(G, ax, pos)
 
-    axbutton = plt.axes((0.2, 0.05, 0.1, 0.07))
+    update_adj_matrix(graphs[time], adj_matrix_frame)
+
+    axbutton = plt.axes((0.15, 0.05, 0.1, 0.07))
     button = Button(axbutton, "new")
-    button.on_clicked(refresh)
+    button.on_clicked(regenerate)
 
+    axrefresh = plt.axes((0.3, 0.05, 0.1, 0.07))
+    refresh_button = Button(axrefresh, "refresh")
+    refresh_button.on_clicked(refresh)
 
-    axbox = plt.axes((0.45, 0.05, 0.07, 0.07))
+    axbox = plt.axes((0.5, 0.05, 0.07, 0.07))
     text_box = TextBox(axbox, "nodes: ", initial=str(node_count))
     text_box.on_submit(submit_nodes)
-
 
     axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
     slider = Slider(axslider, "time", 0, 100, valstep=1)

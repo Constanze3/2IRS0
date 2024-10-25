@@ -1,23 +1,41 @@
-
-# Python program to create a table
 from tkinter import *
 
 class TKTable:
     def __init__(self, root, rows, columns, table):
         self.root = root
+        self.cells = []
         for j in range(columns):
             self.make_cell(j, 0, j+1)
         for i in range(rows):
             self.make_cell(i, i+1, 0)
+            row_cells = []
             for j in range(columns):
+                row_cells.append(
+                    self.make_cell(str(table[i][j]), i+1, j+1, "blue")
+                )
+            self.cells.append(row_cells)
 
-                self.make_cell(str(table[i][j]), i+1, j+1, "blue")
-
-    
     def make_cell(self, text, row, column, color="black"):
-        self.e = Entry(self.root, width=15, fg=color, font=('Arial',10,'bold'))
-        self.e.grid(row=row, column=column)
-        self.e.insert(END, text)
+        e = Entry(self.root, width=15, fg=color, font=('Arial',10,'bold'))
+        e.grid(row=row, column=column)
+        e.insert(END, text)
+        return e
+    
+    def get_values(self):
+        values = []
+        for row in self.cells:
+            current_row = []
+            for cell in row:
+                value = cell.get()
+                try:
+                    value = eval(value)
+                    if value == "None":
+                        value = None
+                except Exception:
+                    value = None
+                current_row.append(value)
+            values.append(current_row)
+        return values
 
 
 if __name__ == "__main__":

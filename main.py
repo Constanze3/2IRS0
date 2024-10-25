@@ -158,7 +158,7 @@ def update_time(t):
 
 
 axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
-slider = Slider(axslider, "time", 0, 100, 0, valstep=1)
+slider = Slider(axslider, "time", 0, 100, valinit=0, valstep=1)
 slider.on_changed(update_time)
 
 def onclick(event):

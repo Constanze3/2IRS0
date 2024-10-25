@@ -88,21 +88,24 @@ def show_tables(tables):
 
 
 
-def baruah(G, ax, pos):
+def baruah(G, ax, pos, destinations=None):
+    # frame = create_frame(root)
+    # reset previous frame
+    for widget in frame.winfo_children():
+        widget.destroy()
+
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
-    table = build_routing_tables(G_for_baruah, len(G_for_baruah.keys()) - 1)
+    if destinations is None:
+        destinations = G_for_baruah.keys()
+        # destinations = [len(G_for_baruah) - 1]
 
-    def format_node(node_tuples):
-        result = ""
-        for node_tuple in node_tuples:
-            result += f"{node_tuple}\n"
-        result += "\n"
-        return result
-    baruah_labels = {node: format_node(table[node]) for node in table}
+    for node in destinations:
+        table = build_routing_tables(G_for_baruah, node)
 
-    for node in G_for_baruah.keys():
-        r = routing_table_widget(frame, node, len(G_for_baruah.keys()) - 1, table[node])
-        r.grid(column=node, row=0, sticky="nsw", padx=5)
+        frame.grid_rowconfigure(node, weight=1)
+        for node2 in G_for_baruah.keys():
+            r = routing_table_widget(frame, node2, node, table[node2])
+            r.grid(column=node2, row=node, sticky="nsw", padx=5)
 
 
 def refresh(event):

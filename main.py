@@ -4,39 +4,9 @@ from matplotlib.widgets import TextBox, Button, Slider
 import random
 from pathfinding import Pathfinder
 import copy
-
-
 from baruah import build_routing_tables
-
-# def generate_random_graph(node_count, overall_max_time=20, max_t=100):
-#     edge_count = random.randint(node_count - 1, int((node_count * node_count - 1) / 2)) 
-
-#     G = nx.Graph()
-#     G.add_nodes_from([0, node_count - 1])
-
-#     def create_edge(u, v):
-#         typical_time = random.randint(1, overall_max_time)
-#         max_time = random.randint(typical_time, overall_max_time)
-
-#         G.add_edge(u, v, typical_delay=typical_time, max_delay=max_time)
-
-#     possible_edges = [(i, j) for i in range(node_count) for j in range(node_count) if i != j]
-
-#     # add a path involving all nodes to the graph to make sure it is connected
-#     path = list(range(0, node_count))
-#     random.shuffle(path)
-#     for i in range(len(path) - 1):
-#         u = path[i]
-#         v = path[i + 1]
-#         create_edge(u, v)
-#         possible_edges.remove((u, v))
-
-#     # create the remaining edges randomly
-#     for _ in range(edge_count - G.number_of_edges()):
-#         index = random.randrange(len(possible_edges))
-#         edge = possible_edges.pop(index)
-#         create_edge(*edge)
-#     return G
+from table import TKTable
+import tkinter as tk
 
 def generate_random_graph(node_count, overall_max_time=20, max_t=100):
     G = [
@@ -71,11 +41,18 @@ def generate_random_graph(node_count, overall_max_time=20, max_t=100):
     Gs.append(G)
     for t in range(max_t):
         G0 = copy.deepcopy(G)
-        for u, nodes in enumerate(G):
-            for v, delays in enumerate(nodes):
-                if delays:
-                    max_delay = delays[1]
-                    G0[u][v] = (random.randint(1, max_delay), max_delay)
+        u = random.randint(0, node_count - 1)
+        v = random.randint(0, node_count - 1)
+        while not G0[u][v]:
+            u = random.randint(0, node_count - 1)
+            v = random.randint(0, node_count - 1)
+        (expected_delay, max_delay) = G0[u][v]
+        G0[u][v] = (random.randint(1, max_delay), max_delay)
+        # for u, nodes in enumerate(G):
+        #     for v, delays in enumerate(nodes):
+        #         if delays:
+        #             max_delay = delays[1]
+        #             G0[u][v] = (random.randint(1, max_delay), max_delay)
         Gs.append(G0)
     return Gs
 
@@ -96,6 +73,13 @@ def plot_graph(G, ax, pos):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
+def show_tables(tables):
+    index = 0
+    root = tk.Tk()
+    print(len(tables[index]))
+    t = TKTable(root, len(tables[index]), 1, tables[index])
+    root.mainloop()
+
 def baruah(G, ax, pos):
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
     table = build_routing_tables(G_for_baruah, len(G_for_baruah.keys()) - 1)
@@ -107,7 +91,8 @@ def baruah(G, ax, pos):
         result += "\n"
         return result
     baruah_labels = {node: format_node(table[node]) for node in table}
-    nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
+    show_tables(baruah_labels)
+    # nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
 
 
 
@@ -131,7 +116,6 @@ def refresh(event):
     plot_graph(G, ax, pos)
     baruah(G, ax, pos)
     fig.canvas.draw()
-
 
 axbutton = plt.axes((0.2, 0.05, 0.1, 0.07))
 button = Button(axbutton, "new")
@@ -158,13 +142,25 @@ def update_time(t):
 
 
 axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
-slider = Slider(axslider, "time", 0, 100, valinit=0, valstep=1)
+slider = Slider(axslider, "time", 0, 100, valstep=1)
 slider.on_changed(update_time)
 
 def onclick(event):
     if 120 < event.y:
         return
 
+def on_press(event):
+    global time
+    if event.key == "d" and time < 100:
+        time += 1
+        slider.set_val(time)
+        update_time(time)
+    elif event.key == "a" and time > 0:
+        time -= 1
+        slider.set_val(time)
+        update_time(time)
+
+fig.canvas.mpl_connect('key_press_event', on_press)
 fig.canvas.mpl_connect('button_press_event', onclick)
 
 plt.show()

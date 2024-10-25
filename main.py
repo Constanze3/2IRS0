@@ -1,5 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 from matplotlib.widgets import TextBox, Button, Slider
 import random
 from pathfinding import Pathfinder
@@ -7,6 +9,9 @@ import copy
 from baruah import build_routing_tables
 from table import TKTable
 import tkinter as tk
+
+from window import routing_table_widget, create_frame, create_root
+
 
 def generate_random_graph(node_count, overall_max_time=20, max_t=100):
     G = [
@@ -66,6 +71,18 @@ def from_adjacency_matrix(matrix):
                 G.add_edge(u, v, typical_delay=delays[0], max_delay=delays[1])
     return G
 
+root = create_root()
+frame = create_frame(root)
+
+graph_frame = create_frame(root)
+
+node_count = 5
+time = 0
+fig, ax = plt.subplots()
+plt.subplots_adjust(bottom=0.2)
+
+canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
 def plot_graph(G, ax, pos):
     colors = ["b"] * len(G.edges())
@@ -80,6 +97,8 @@ def show_tables(tables):
     t = TKTable(root, len(tables[index]), 1, tables[index])
     root.mainloop()
 
+
+
 def baruah(G, ax, pos):
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
     table = build_routing_tables(G_for_baruah, len(G_for_baruah.keys()) - 1)
@@ -91,16 +110,23 @@ def baruah(G, ax, pos):
         result += "\n"
         return result
     baruah_labels = {node: format_node(table[node]) for node in table}
-    show_tables(baruah_labels)
-    # nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
+    # show_tables(baruah_labels)
+
+    # Table = Dict[Node, Set[Tuple[float, Node | None, float]]]
+    # we need an array of tuples for each node
+
+    # r0 = routing_table_widget(frame, 0, len(G_for_baruah.keys()) - 1, table[0])    # nx.draw_networkx_labels(G, pos, labels=baruah_labels, ax=ax)
+    # r0.grid(column=0, row=0, sticky="nsw", padx=5)
+
+    for node in G_for_baruah.keys():
+        r = routing_table_widget(frame, node, len(G_for_baruah.keys()) - 1, table[node])
+        r.grid(column=node, row=0, sticky="nsw", padx=5)
 
 
 
 
-node_count = 5
-time = 0
-fig, ax = plt.subplots()
-plt.subplots_adjust(bottom=0.2)
+
+
 graphs = generate_random_graph(node_count)
 G = from_adjacency_matrix(graphs[time])
 pos = nx.spring_layout(G)
@@ -163,5 +189,5 @@ def on_press(event):
 fig.canvas.mpl_connect('key_press_event', on_press)
 fig.canvas.mpl_connect('button_press_event', onclick)
 
-plt.show()
-
+# plt.show()
+root.mainloop()

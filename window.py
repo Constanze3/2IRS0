@@ -57,14 +57,24 @@ def routing_table_widget(root, node, destination, routing_table, fg="black", bg=
     
     return frame
 
-def main():
+def create_root():
     root = tk.Tk()
     root.title("Research")
     root.geometry("1200x600")
 
+    return root
+
+def create_frame(root):
+
     frame = tk.Frame(root, bg="gray60", cursor="arrow")
     frame.pack(anchor="nw", fill="both", expand=True)
     frame.grid_rowconfigure(0, weight=1)
+
+    return frame
+
+def main():
+    root = create_root()
+    frame = create_frame(root)
 
     test_routing_table = [(1, 2, 3)] * 100
 
@@ -82,4 +92,5 @@ def main():
 
     root.mainloop()
 
-main()
+if __name__ == "__main__":
+    main()

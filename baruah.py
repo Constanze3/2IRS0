@@ -39,15 +39,15 @@ def build_routing_tables(graph: Graph, destination: Node) -> Table:
             for dv, piv, deltav in table[v]:
                 d = max(dmin, weights[0] + dv)
                 delta = deltav + weights[0]
-                # insert = True # Should tuple (d, v, delta) be inserted into TAB[u]?
-                # for du, piu, deltau in table[u].copy():
-                #     if du >= d and deltau >= delta:
-                #         # remove (du, piu, deltau) from TAB[u], since (d, v, delta) subsumes it
-                #         table[u] = table[u] - {(du, piu, deltau)}
-                    # if du <= d and deltau < delta:
-                    #     insert = False # (d, v, delta) is subsumed by (du, piu, deltau)
-                # if insert:
-                table[u] = table[u] | {(d, v, delta)}
+                insert = True # Should tuple (d, v, delta) be inserted into TAB[u]?
+                for du, piu, deltau in table[u].copy():
+                    if du >= d and deltau >= delta:
+                        # remove (du, piu, deltau) from TAB[u], since (d, v, delta) subsumes it
+                        table[u] = table[u] - {(du, piu, deltau)}
+                    if du <= d and deltau < delta:
+                        insert = False # (d, v, delta) is subsumed by (du, piu, deltau)
+                if insert:
+                    table[u] = table[u] | {(d, v, delta)}
 
     # print(table)
     # pretty_print_table(table)

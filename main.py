@@ -183,7 +183,7 @@ if __name__ == "__main__":
     filemenu.add_command(label="Save", command=save)
     filemenu.add_command(label="Load", command=load)
     menubar.add_cascade(label="File", menu=filemenu)
-    root.config(menu=menubar)
+    graph_root.config(menu=menubar)
 
     node_count = 5
     time = 0

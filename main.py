@@ -10,8 +10,7 @@ from baruah import build_routing_tables
 from table import TKTable
 import tkinter as tk
 import signal
-
-import numpy as np
+import json
 
 from window import routing_table_widget, create_frame, create_root
 
@@ -165,11 +164,14 @@ def update_adj_matrix():
 
 def save():
     global graphs
-    print(graphs)
-    a = np.array(graphs, dtype=object)
-    np.savetxt("graph.csv", a, delimiter=",")
+    with open("graph.json", "w") as f:
+        json.dump(graphs, f)
 
 def load():
+    global graphs
+    with open("graph.json", "r") as f:
+        graphs = json.loads(f.read())
+    update_time(0)
     return
 
 if __name__ == "__main__":

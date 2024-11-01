@@ -9,11 +9,13 @@ import copy
 from baruah import build_routing_tables
 from table import TKTable
 import tkinter as tk
+import numpy as np
 
 from window import routing_table_widget, create_frame, create_root
 
+MAX_TIME = 10
 
-def generate_random_graph(node_count, overall_max_time=20, max_t=100):
+def generate_random_graph(node_count, overall_max_time=20, max_t=MAX_TIME):
     G = [
         [None for x in range(node_count)] for y in range(node_count)
     ]
@@ -134,7 +136,7 @@ def onclick(event):
 
 def on_press(event):
     global time
-    if event.key == "d" and time < 100:
+    if event.key == "d" and time < MAX_TIME:
         time += 1
         slider.set_val(time)
         update_time(time)
@@ -152,11 +154,26 @@ def update_adj_matrix():
     adj_matrix = TKTable(adj_matrix_frame, len(matrix), len(matrix[0]), matrix)
     adj_matrix_frame.pack()
 
+def save():
+    global graphs
+    print(graphs)
+    a = np.array(graphs, dtype=object)
+    np.savetxt("graph.csv", a, delimiter=",")
+
+def load():
+    return
+
 if __name__ == "__main__":
     adj_matrix = None
     root = create_root()
     frame = create_frame(root)
-    
+    frame.pack()
+    menubar = tk.Menu(root)
+    filemenu = tk.Menu(menubar, tearoff=0)
+    filemenu.add_command(label="Save", command=save)
+    filemenu.add_command(label="Load", command=load)
+    menubar.add_cascade(label="File", menu=filemenu)
+    root.config(menu=menubar)
 
     graph_frame = create_frame(root)
 
@@ -192,7 +209,7 @@ if __name__ == "__main__":
     text_box.on_submit(submit_nodes)
 
     axslider = plt.axes((0.7, 0.05, 0.2, 0.07))
-    slider = Slider(axslider, "time", 0, 100, valstep=1)
+    slider = Slider(axslider, "time", 0, MAX_TIME, valstep=1)
     slider.on_changed(update_time)
 
     fig.canvas.mpl_connect('key_press_event', on_press)

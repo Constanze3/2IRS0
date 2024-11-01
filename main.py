@@ -9,6 +9,8 @@ import copy
 from baruah import build_routing_tables
 from table import TKTable
 import tkinter as tk
+import signal
+
 import numpy as np
 
 from window import routing_table_widget, create_frame, create_root
@@ -73,8 +75,15 @@ def plot_graph(G, ax, pos):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
+table_root = create_root()
+table_frame = None
 def baruah(G, ax, pos, destinations=None):
-    for widget in frame.winfo_children():
+    global table_frame
+
+    if table_frame is not None:
+        table_frame.destroy()
+    table_frame = create_frame(table_root)
+    for widget in table_frame.winfo_children():
         widget.destroy()
 
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
@@ -84,12 +93,12 @@ def baruah(G, ax, pos, destinations=None):
     for node in destinations:
         table = build_routing_tables(G_for_baruah, node)
 
-        frame.grid_rowconfigure(node, weight=1)
+        table_frame.grid_rowconfigure(node, weight=1)
         col = 0
         for node2 in G_for_baruah.keys():
             if node2 == node:
                 continue
-            r = routing_table_widget(frame, node2, node, table[node2])
+            r = routing_table_widget(table_frame, node2, node, table[node2])
             r.grid(column=col, row=node, sticky="nsw", padx=5)
             col += 1
 
@@ -165,27 +174,18 @@ def load():
 
 if __name__ == "__main__":
     adj_matrix = None
-    root = create_root()
-    frame = create_frame(root)
-    frame.pack()
-    menubar = tk.Menu(root)
-    filemenu = tk.Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Save", command=save)
-    filemenu.add_command(label="Load", command=load)
-    menubar.add_cascade(label="File", menu=filemenu)
-    root.config(menu=menubar)
-
-    graph_frame = create_frame(root)
+    graph_root = create_root()
+    graph_frame = create_frame(graph_root)
 
     node_count = 5
     time = 0
     fig, ax = plt.subplots()
-    plt.subplots_adjust(bottom=0.2)
+    # plt.subplots_adjust(bottom=0.2)
 
     canvas = FigureCanvasTkAgg(fig, master=graph_frame)
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-    adj_matrix_frame = tk.Frame(root)
+    adj_matrix_frame = create_frame(graph_root)
     adj_matrix_frame.pack(side=tk.RIGHT, fill=tk.BOTH)
 
     graphs = generate_random_graph(node_count)
@@ -212,7 +212,22 @@ if __name__ == "__main__":
     slider = Slider(axslider, "time", 0, MAX_TIME, valstep=1)
     slider.on_changed(update_time)
 
+    closebutton = plt.axes((0.9, 0.05, 0.1, 0.07))
+    close_button = Button(closebutton, "close")
+    close_button.on_clicked(lambda x: exit())
+
     fig.canvas.mpl_connect('key_press_event', on_press)
     fig.canvas.mpl_connect('button_press_event', onclick)
 
-    root.mainloop()
+    # exit on close graph window
+    graph_root.protocol("WM_DELETE_WINDOW", exit)
+    # exit on close table window
+    table_root.protocol("WM_DELETE_WINDOW", exit)
+
+    # catch sigint
+    signal.signal(signal.SIGINT, lambda x, y: exit())
+    # sigterm
+    signal.signal(signal.SIGTERM, lambda x, y: exit())
+
+    graph_root.mainloop()
+    table_root.mainloop()

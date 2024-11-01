@@ -9,7 +9,7 @@ class TKTable:
         for i in range(rows):
             self.make_cell(i, i+1, 0)
             row_cells = []
-            for j in range(columns):
+            for j in range(i, columns):
                 row_cells.append(
                     self.make_cell(str(table[i][j]), i+1, j+1, "blue")
                 )
@@ -23,8 +23,8 @@ class TKTable:
     
     def get_values(self):
         values = []
-        for row in self.cells:
-            current_row = []
+        for n, row in enumerate(self.cells):
+            current_row = [None] * n
             for cell in row:
                 value = cell.get()
                 try:

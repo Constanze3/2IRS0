@@ -89,14 +89,16 @@ def baruah(G, ax, pos, destinations=None):
     if destinations is None:
         destinations = G_for_baruah.keys()
 
-    for node in destinations:
+    sorted_nodes = [node for node in G_for_baruah.keys()]
+    sorted_nodes.sort()
+    sorted_destinations = [node for node in destinations]
+    sorted_destinations.sort()
+    for node in sorted_destinations:
         table = build_routing_tables(G_for_baruah, node)
 
         table_frame.grid_rowconfigure(node, weight=1)
         col = 0
-        for node2 in G_for_baruah.keys():
-            if node2 == node:
-                continue
+        for node2 in sorted_nodes:
             r = routing_table_widget(table_frame, node2, node, table[node2])
             r.grid(column=col, row=node, sticky="nsw", padx=5)
             col += 1

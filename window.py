@@ -61,6 +61,7 @@ def create_root():
     root = tk.Tk()
     root.title("Research")
     root.geometry("1200x600")
+    root.config(cursor="arrow")
 
     return root
 

@@ -177,18 +177,27 @@ def load():
     update_time(0)
     return
 
+num_windows_closed = 0
+def window_closed(root):
+    global num_windows_closed
+    num_windows_closed += 1
+    if num_windows_closed == 2:
+        exit()
+    root.destroy()
+
+
 if __name__ == "__main__":
     adj_matrix = None
     graph_root = create_root()
     graph_frame = create_frame(graph_root)
 
     graph_frame.pack()
-    menubar = tk.Menu(graph_root)
-    filemenu = tk.Menu(menubar, tearoff=0)
+    menubar = tk.Menu(graph_root, cursor="arrow")
+    filemenu = tk.Menu(menubar, tearoff=0, cursor="arrow")
     filemenu.add_command(label="Save", command=save)
     filemenu.add_command(label="Load", command=load)
     menubar.add_cascade(label="File", menu=filemenu)
-    graph_root.config(menu=menubar)
+    graph_root.config(menu=menubar, cursor="arrow")
 
     node_count = 5
     time = 0
@@ -233,9 +242,9 @@ if __name__ == "__main__":
     fig.canvas.mpl_connect('button_press_event', onclick)
 
     # exit on close graph window
-    graph_root.protocol("WM_DELETE_WINDOW", exit)
+    graph_root.protocol("WM_DELETE_WINDOW", lambda: window_closed(graph_root))
     # exit on close table window
-    table_root.protocol("WM_DELETE_WINDOW", exit)
+    table_root.protocol("WM_DELETE_WINDOW", lambda: window_closed(table_root))
 
     # catch sigint
     signal.signal(signal.SIGINT, lambda x, y: exit())

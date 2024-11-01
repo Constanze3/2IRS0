@@ -170,9 +170,10 @@ def save():
         json.dump(graphs, f)
 
 def load():
-    global graphs
+    global graphs, pos
     with open("graph.json", "r") as f:
         graphs = json.loads(f.read())
+    pos = nx.spring_layout(from_adjacency_matrix(graphs[0]))
     update_time(0)
     return
 

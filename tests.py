@@ -3,7 +3,7 @@ from typing import Dict
 from baruah import baruah
 
 # test name, input graph, destination node, output tables
-TestCase = (str, Dict, int, Dict)
+TestCase = (str, Dict, int, Dict, bool)
 tests = [
     # Original Paper Example
     (
@@ -20,23 +20,43 @@ tests = [
             2: [(15, 4, 12), (20, 3, 8)],
             3: [(10, 4, 4)],
             4: [(0, None, 0)]
-        }
+        },
+        False,
+    ),
+    (
+        "Con Worked Out Example 1 With KeepEntries",
+        {
+            1: {2: {'typical_delay': 5, 'max_delay': 7}, 4: {'typical_delay': 12, 'max_delay': 18}},
+            2: {4: {'typical_delay': 8, 'max_delay': 9}, 3: {'typical_delay': 3, 'max_delay': 7}},
+            3: {4: {'typical_delay': 4, 'max_delay': 5}},
+            4: {},
+        },
+        4,
+        {
+            1: [(16, 2, 13), (17, 2, 12), (18, 4, 12)],
+            2: [(12, 3, 7), (9, 4, 8)],
+            3: [(5, 4, 4)],
+            4: [(0, None, 0)],
+        },
+        True,
     ),
 ]
 
 
 def compare_tables(table1, table2):
     for node, entries in table1.items():
-        for entry1, entry2 in zip(entries, table2[node]):
-            if entry1 != entry2:
-                print(entry1, entry2)
-                return False
+        # order not important
+        if sorted(entries) != sorted(table2[node]):
+            return False
     return True
 
 
 def run_test(test: TestCase):
-    name, graph, destination, expected_table = test
-    result = baruah(graph, destination, False)
+    name, graph, destination, expected_table, keep_entries = test
+    result = baruah(graph, destination, keep_entries)
+    print(name)
+    print("Result:   " + str(result))
+    print("Expected: " + str(expected_table))
     return compare_tables(result, expected_table)
 
 

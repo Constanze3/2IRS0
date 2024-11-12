@@ -7,12 +7,13 @@ Graph = Mapping[Node, Edges]
 
 Tables = Dict[Node, Set[Tuple[float, Node | None, float]]]
 
+
 def pretty_print_table(table: Tables) -> None:
     for i in range(len(table)):
         print(f"Node {i}: {table[i]}")
 
-def build_routing_tables(graph: Graph, destination: Node) -> Tables:
 
+def build_routing_tables(graph: Graph, destination: Node) -> Tables:
     # destination t: last elem of graph
     t = destination
 
@@ -39,13 +40,13 @@ def build_routing_tables(graph: Graph, destination: Node) -> Tables:
             for dv, piv, deltav in table[v]:
                 d = max(dmin, weights[0] + dv)
                 delta = deltav + weights[0]
-                
+
                 contains_v = False
                 for value in table[u]:
                     if value[1] == v:
                         contains_v = True
 
-                insert = True # Should tuple (d, v, delta) be inserted into TAB[u]?
+                insert = True  # Should tuple (d, v, delta) be inserted into TAB[u]?
 
                 if not contains_v:
                     for du, piu, deltau in table[u].copy():
@@ -53,7 +54,7 @@ def build_routing_tables(graph: Graph, destination: Node) -> Tables:
                             # remove (du, piu, deltau) from TAB[u], since (d, v, delta) subsumes it
                             table[u] = table[u] - {(du, piu, deltau)}
                         if du <= d and deltau < delta:
-                            insert = False # (d, v, delta) is subsumed by (du, piu, deltau)
+                            insert = False  # (d, v, delta) is subsumed by (du, piu, deltau)
                     if insert:
                         table[u] = table[u] | {(d, v, delta)}
 
@@ -62,17 +63,22 @@ def build_routing_tables(graph: Graph, destination: Node) -> Tables:
 
     return table
 
-def baruah(graph, destination, keep_entries):
+
+def baruah(graph: Dict, destination, keep_entries):
     """
     Runs Baruah's routing algorithm.
 
+    'graph' adjacency list of the graph.
+    'destination' the destination node.
     'keep_entries' will make sure for the routing tables of each node to keep a routing table entry for each neighboring node.
     """
 
-    # TODO actually find nodes and edges of the graph
-    nodes = graph.nodes
-    edges = graph.edges
-    
+    nodes = graph.keys()
+    edges = set()
+    for u, uedges in graph.items():
+        for v, weights in uedges.items():
+            edges.add((u, v, weights['typical_delay'], weights['max_delay']))
+
     tab = {}
 
     for node in nodes:
@@ -80,18 +86,17 @@ def baruah(graph, destination, keep_entries):
     tab[destination] = [(0, None, 0)]
 
     def relax(edge):
-        global tab
         # u, v are the start and end vertices of the edge
         # c_w is the worst case delay traversing the edge
         # c_t is the estimate of the typical delay when traversing the edge
-        u, v, c_w, c_t = edge
+        u, v, c_t, c_w = edge
 
         # this function attempts to use the entries in tab[v] to update tab[u]
 
         if not tab[v]:
             # the tab[v] is empty there is nothing to update the tab[u] with
             return
-        
+
         # tab[v], = informs us
         # of a path from v to the destinaton with
         # worst-case delay bound d_v and typical delay de_v
@@ -108,6 +113,11 @@ def baruah(graph, destination, keep_entries):
 
             entry_count = {}
             # TODO for each neighbor check the count of entries in tab[u]
+            for neighbor in graph[u].keys():
+                entry_count[neighbor] = 0
+                for d_u, p_u, de_u in tab[u]:
+                    if p_u == neighbor:
+                        entry_count[neighbor] += 1
 
             if keep_entries:
                 # if there are no entries with v as the parent we insert v
@@ -128,7 +138,7 @@ def baruah(graph, destination, keep_entries):
                         tab[u].remove((d_u, p_u, de_u))
 
             tab[u].append((d, v, de))
-        
+
     for i in range(len(nodes) - 1):
         for edge in edges:
             relax(edge)

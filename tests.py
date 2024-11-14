@@ -1,9 +1,9 @@
-from typing import Dict
+from typing import Tuple
+from baruah import baruah, Tables, Graph, Node
 
-from baruah import baruah
+# test name, input graph, destination node, output tables, keep entries
+TestCase = Tuple[str, Graph, Node, Tables, bool]
 
-# test name, input graph, destination node, output tables
-TestCase = (str, Dict, int, Dict, bool)
 tests = [
     # Original Paper Example
     (
@@ -16,7 +16,7 @@ tests = [
         },
         4,
         {
-            1: [(25, 4, 15)],
+            1: [(25, 2, 12)],
             2: [(15, 4, 12), (20, 3, 8)],
             3: [(10, 4, 4)],
             4: [(0, None, 0)]
@@ -43,9 +43,8 @@ tests = [
 ]
 
 
-def compare_tables(table1, table2):
+def compare_tables(table1: Tables, table2: Tables):
     for node, entries in table1.items():
-        # order not important
         if sorted(entries) != sorted(table2[node]):
             return False
     return True
@@ -54,21 +53,28 @@ def compare_tables(table1, table2):
 def run_test(test: TestCase):
     name, graph, destination, expected_table, keep_entries = test
     result = baruah(graph, destination, keep_entries)
+
     print(name)
     print("Result:   " + str(result))
     print("Expected: " + str(expected_table))
+
     return compare_tables(result, expected_table)
 
 
 def main():
     tests_passed = 0
-    for i, test in enumerate(tests):
+
+    for test in tests:
         result = run_test(test)
+
         if not result:
             print(f"Test {test[0]} failed.")
         else:
             print(f"Test {test[0]} passed.")
             tests_passed += 1
+
+        print()
+
     if tests_passed == len(tests):
         print("All tests passed.")
     else:

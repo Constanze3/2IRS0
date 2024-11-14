@@ -85,7 +85,7 @@ if __name__ == "__main__":
         4: {}
     }
 
-    e = (1, 2)
+    e = (3, 4)
     ew = G[e[0]][e[1]]
 
     old_tables = baruah(G, 4, True)
@@ -102,10 +102,15 @@ if __name__ == "__main__":
         old_weight = ew["typical_delay"] - 1
         new_weight = ew["typical_delay"]
         print(f"ew: {old_weight} -> {new_weight}")
+        print()
 
         # print num of differences for each node
         for node in G.keys():
-            print(f"{node}: {len(diff[node])}")
-        print()
+            print(f"Node {node}")
+            print(f"changed: {len(diff[node])}")
+            print(f"removed: {diff[node].removed}")
+            print(f"added: {diff[node].added}")
+            print()
+        print("---")
 
         old_tables = new_tables

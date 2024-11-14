@@ -16,7 +16,7 @@ tests = [
         },
         4,
         {
-            1: [(25, 4, 15)],
+            1: [(25, 2, 12)],
             2: [(15, 4, 12), (20, 3, 8)],
             3: [(10, 4, 4)],
             4: [(0, None, 0)]
@@ -43,7 +43,7 @@ tests = [
 ]
 
 
-def compare_tables(table1, table2):
+def compare_tables(table1: Tables, table2: Tables):
     for node, entries in table1.items():
         if sorted(entries) != sorted(table2[node]):
             return False

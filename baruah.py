@@ -1,4 +1,5 @@
 from typing import Any, Mapping, Tuple, List, Dict, Set
+from random import shuffle
 
 Node = Any
 Graph = Mapping[Node, Mapping[Node, Mapping[str, Any]]]
@@ -19,6 +20,8 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     for u, neighbors in graph.items():
         for v, weights in neighbors.items():
             edges.append((u, v, weights["typical_delay"], weights["max_delay"]))
+    
+    shuffle(edges)
 
     # initialization
     tab = {}
@@ -53,23 +56,26 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
             de = de_v + c_t
 
             entry_count = {}
-            for neighbor in graph[u].keys():
-                entry_count[neighbor] = 0
-                for d_u, p_u, de_u in tab[u]:
-                    if p_u == neighbor:
-                        entry_count[neighbor] += 1
-
             if keep_entries:
+                for neighbor in graph[u].keys():
+                    entry_count[neighbor] = 0
+                    for d_u, p_u, de_u in tab[u]:
+                        if p_u == neighbor:
+                            entry_count[neighbor] += 1
+            
                 # if there are no entries with v as the parent we insert v
                 if entry_count[v] == 0:
                     tab[u].append((d, v, de))
                     return
+                
+            insert = True
 
             for d_u, p_u, de_u in tab[u]:
                 if d_u <= d and de_u < de:
                     # our new entry is dominated by an existing entry, it should not be inserted
                     # -> there are no entries in the table that this entry dominates
-                    return
+                    insert = False
+                    break
                 elif d_u >= d and de_u >= de:
                     # existing entry is dominated by our new entry 
                     # -> our new entry is definitely in the table
@@ -77,7 +83,8 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
                         # we make sure that there is at least one entry with p_u
                         tab[u].remove((d_u, p_u, de_u))
 
-            tab[u].append((d, v, de))
+            if insert:
+                tab[u].append((d, v, de))
 
     for i in range(len(nodes) - 1):
         for edge in edges:

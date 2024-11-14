@@ -2,6 +2,7 @@ from typing import Any, Mapping, Tuple, List, Dict, Set
 from random import shuffle
 
 Node = Any
+Edge = Tuple[Any, Any]
 Graph = Mapping[Node, Mapping[Node, Mapping[str, Any]]]
 
 Entry = Tuple[float, Node | None, float]

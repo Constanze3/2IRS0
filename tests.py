@@ -43,22 +43,26 @@ tests = [
 ]
 
 
-def compare_tables(table1: Tables, table2: Tables):
-    for node, entries in table1.items():
-        if sorted(entries) != sorted(table2[node]):
+def compare_tables(tables1: Tables, tables2: Tables):
+    for node, entries in tables1.items():
+        if entries != tables2[node]:
             return False
     return True
 
 
 def run_test(test: TestCase):
-    name, graph, destination, expected_table, keep_entries = test
+    name, graph, destination, expected_tables, keep_entries = test
+
+    for table in expected_tables.values():
+        table.sort()
+
     result = baruah(graph, destination, keep_entries)
 
     print(name)
     print("Result:   " + str(result))
-    print("Expected: " + str(expected_table))
+    print("Expected: " + str(expected_tables))
 
-    return compare_tables(result, expected_table)
+    return compare_tables(result, expected_tables)
 
 
 def main():

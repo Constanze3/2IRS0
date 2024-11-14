@@ -24,7 +24,7 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     shuffle(edges)
 
     # initialization
-    tab = {}
+    tab: Tables = {}
     for node in nodes:
         tab[node] = []
     tab[destination] = [(0, None, 0)]
@@ -89,5 +89,9 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     for i in range(len(nodes) - 1):
         for edge in edges:
             relax(edge)
+
+   # since tables are a set of entries having them as a sorted list is convenient
+    for table in tab.values():
+        table.sort()
 
     return tab

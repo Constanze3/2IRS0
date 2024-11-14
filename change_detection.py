@@ -1,4 +1,4 @@
-import baruah as bh
+from baruah import Tables
 import networkx as nx
 
 def detect_changes(old_tables: bh.Tables, new_tables: bh.Tables):
@@ -18,6 +18,15 @@ def detect_changes(old_tables: bh.Tables, new_tables: bh.Tables):
         num_of_changes += len(diff)
 
     return num_of_changes
+
+def changes(old_tables: Tables, new_tables: Tables):
+    assert(len(old_tables) == len(new_tables))
+
+    # entries that were removed from the old tables to get to the new ones
+    was_removed = []
+    # entries in new tables that are new compared to the old tables
+    is_new = []
+
 
 if __name__ == "__main__":
     G = {}

@@ -3,7 +3,10 @@ from random import shuffle
 
 Node = Any
 Graph = Mapping[Node, Mapping[Node, Mapping[str, Any]]]
-Tables = Dict[Node, List[Tuple[float, Node | None, float]]]
+
+Entry = Tuple[float, Node | None, float]
+Table = List[Entry] 
+Tables = Dict[Node, Table]
 
 def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     """

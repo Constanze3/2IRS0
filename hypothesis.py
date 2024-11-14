@@ -141,11 +141,12 @@ if __name__ == "__main__":
     changed_entries = determine_changed_entries(G, 4, tables)
     print(changed_entries.on_increment)
 
-    e = (1, 2)
+    e = (2, 3)
     ew = G[e[0]][e[1]]
     
     ew["typical_delay"] += 1
     new_tables = baruah(G, 4, True)
-
-    print(difference(tables, new_tables)[1].removed)
+    
+    for node, diff in difference(tables, new_tables).items():
+        print(f"from {node} removed {diff.removed}")
     

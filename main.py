@@ -11,6 +11,7 @@ import signal
 from baruah import baruah
 from table import TKTable
 from window import routing_table_widget, create_frame, create_root
+from difference import difference
 
 MAX_TIME = 10
 node_count = 5
@@ -76,22 +77,41 @@ def plot_graph(G, ax, pos):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "typical_delay"), ax=ax, label_pos=0.3)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=nx.get_edge_attributes(G, "max_delay"), ax=ax, font_color='red', label_pos=0.7)
 
+old_tables = None
 def show_baruah_table(G, pos):
     """Displays Baruah routing tables for the graph."""
-    global table_frame
+    global table_frame, old_tables
     if table_frame:
         table_frame.destroy()
     table_frame = create_frame(table_root)
 
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
-    destinations = sorted(G_for_baruah.keys())
+    # destinations = sorted(G_for_baruah.keys())
+    destinations = [len(G_for_baruah) - 1]
+
 
     adj_list = adj_matrix_to_adj_list(graphs[time])
 
     for node in destinations:
         # table = build_routing_tables(G_for_baruah, node)
         # table = build_routing_tables(adj_list, node)
-        table = baruah(adj_list, node, True)
+
+        table = baruah(adj_list, node, False)
+        if not old_tables:
+            old_tables = table
+        else:
+            diff = difference(old_tables, table)
+            for n, d in diff.items():
+                if not d.added and not d.removed:
+                    continue
+                print(f"Node {n}:")
+                print(f"Added: {d.added}")
+                print(f"Removed: {d.removed}")
+                print()
+            print("--------------------------------------------")
+            old_tables = table
+
+
         table_frame.grid_rowconfigure(node, weight=1)
         for col, node2 in enumerate(sorted(G_for_baruah.keys())):
             widget = routing_table_widget(table_frame, node2, node, table[node2])

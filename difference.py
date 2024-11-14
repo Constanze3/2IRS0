@@ -9,6 +9,9 @@ class TableDiff:
     def __len__(self):
         return len(self.removed) + len(self.added)
 
+    def __str__(self):
+        return f"removed: {self.removed}, added: {self.added}"
+
 def difference(old_tables: Tables, new_tables: Tables) -> Mapping[Node, TableDiff]:
     """
     Finds for each table the difference between old and new tables.

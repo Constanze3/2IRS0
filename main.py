@@ -8,7 +8,7 @@ import json
 import copy
 import signal
 
-from baruah import build_routing_tables, baruah
+from baruah import baruah
 from table import TKTable
 from window import routing_table_widget, create_frame, create_root
 

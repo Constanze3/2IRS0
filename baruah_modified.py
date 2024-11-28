@@ -4,6 +4,114 @@ from btypes import *
 
 updated = []
 
+from random import shuffle
+
+def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
+    """
+    Runs Baruah's routing algorithm.
+
+    'graph' adjacency list of the graph.
+    'destination' the destination node.
+    'keep_entries' will make sure for the routing tables of each node to keep a routing table entry for each neighboring node.
+    """
+
+    # get list of nodes and edges of the graph
+    nodes = graph.nodes
+    edges = [edge for edge in graph.edges.values()]
+
+    shuffle(edges)
+
+    # initialization
+    tab: Tables = {}
+    for node_label in nodes:
+        node = nodes[node_label]
+        tab[node] = Table(entries=[])
+    tab[destination] = Table(entries=[Entry(node=None, max_time=0, expected_time=0)])
+
+    def relax(edge: Edge):
+        # u, v are the start and end vertices of the edge
+        # c_w is the worst case delay traversing the edge
+        # c_t is the estimate of the typical delay when traversing the edge
+        u = edge.from_node
+        v = edge.to_node
+        c_t = edge.expected_delay
+        c_w = edge.worse_case_delay
+
+        # this function attempts to use the entries in tab[v] to update tab[u]
+
+        if len(tab[v].entries) == 0:
+            # the tab[v] is empty there is nothing to update the tab[u] with
+            return
+
+        # tab[v], = informs us
+        # of a path from v to the destinaton with
+        # worst-case delay bound d_v and typical delay de_v
+        # the next node along this path is p_v
+
+        # d_min is the smallest worst-case delay bound from u to the destination
+        a = tab[v]
+        d_min = c_w + min([entry.expected_time for entry in tab[v].entries])
+
+        for entry in tab[v].entries:
+            d_v = entry.max_time
+            de_v = entry.expected_time
+            p_v = entry.node
+            # d is a worst case delay bound
+            # it's exact definition is complicated
+            d = max(d_min, c_t + d_v)
+            de = de_v + c_t
+
+            entry_count = {}
+            if keep_entries:
+                for neighbor in u.neighbors:
+                    entry_count[neighbor] = 0
+                    for entry2 in tab[u].entries:
+                        d_u = entry2.max_time
+                        p_u = entry2.node
+                        de_u = entry2.expected_time
+                        if p_u == neighbor:
+                            entry_count[neighbor] += 1
+
+                # if there are no entries with v as the parent we insert v
+                if entry_count[v] == 0:
+                    tab[u].entries.append(Entry(max_time=d, node=v, expected_time=de))
+                    return
+
+            insert = True
+
+            for entry in tab[u].entries:
+                d_u = entry.max_time
+                p_u = entry.node
+                de_u = entry.expected_time
+                if d_u <= d and de_u < de:
+                    # our new entry is dominated by an existing entry, it should not be inserted
+                    # -> there are no entries in the table that this entry dominates
+                    insert = False
+                    break
+                elif d_u >= d and de_u >= de:
+                    # existing entry is dominated by our new entry
+                    # -> our new entry is definitely in the table
+                    if not keep_entries or entry_count[p_u] > 1 or v == p_u:
+                        # we make sure that there is at least one entry with p_u
+                        tab[u].entries.remove(Entry(max_time=d_u, node=p_u, expected_time=de_u))
+
+            if insert:
+                tab[u].entries.append(Entry(max_time=d, node=v, expected_time=de))
+
+    for i in range(len(nodes) - 1):
+        for edge in edges:
+            relax(edge)
+
+    # since tables are a set of entries having them as a sorted list is convenient
+    for table in tab.values():
+        table.entries.sort()
+
+    # assign the tables to the nodes
+    for node in nodes.values():
+        node.table = tab[node]
+
+    return tab
+
 def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
     if time == 0:
         return None
@@ -196,20 +304,28 @@ def main():
 
     g_copy = Graph(nodes=nodes_copy, edges=edges_copy)
 
+    original_baruah(g, nodes["E"], False)
+    original_baruah(g_copy, nodes_copy["E"], False)
 
 
     graphs = TemporalGraph([g, g_copy])
-    for t in range(0, 2):
-        time_step(graphs, t)
+    print(graphs)
+
+    def print_state(graph: Graph, t: int):
         print(f"Time {t}")
-        for node in graphs.at_time(t).nodes:
-            n = graphs.at_time(t).nodes[node]
+        print(graph)
+        for node in graph.nodes:
+            n = graph.nodes[node]
             print(f"Node {n.label}")
             for entry in n.table.entries:
                 print(
-                    f"Entry: {entry.node.label}, {entry.max_time}, {entry.expected_time}"
+                    entry
                 )
         print("\n")
+
+    for t in range(len(graphs)):
+        time_step(graphs, t)
+        print_state(graphs.at_time(t), t)
 
 
 if __name__ == "__main__":

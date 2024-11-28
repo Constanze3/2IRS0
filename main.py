@@ -8,6 +8,7 @@ import json
 import copy
 import signal
 
+from btypes import Node, Edge
 from baruah import baruah
 from table import TKTable
 from window import routing_table_widget, create_frame, create_root
@@ -26,10 +27,15 @@ graph_root: tk.Tk | None = None
 graph_frame: tk.Frame | None = None
 fig, ax = None, None
 slider = None
+nodes = {}
 
 def generate_random_graph(node_count, overall_max_time=20, max_t=MAX_TIME):
     """Generates an adjacency matrix for a random connected graph."""
+    global nodes
     G = [[None for _ in range(node_count)] for _ in range(node_count)]
+    # Creates one node object for each node
+    nodes = dict((x, Node(f"{x}")) for x in range(node_count))
+
     Gs = []
     edge_count = random.randint(node_count - 1, (node_count * node_count - 1) // 2)
 
@@ -38,6 +44,13 @@ def generate_random_graph(node_count, overall_max_time=20, max_t=MAX_TIME):
         max_time = random.randint(typical_time, overall_max_time)
         G[u][v] = (typical_time, max_time)
         G[v][u] = (typical_time, max_time)
+        # add the edges to the node objects
+        nodes[u].neighbors.append(nodes[v])
+        nodes[v].neighbors.append(nodes[u])
+        edge = Edge(u, v, typical_time, max_time)
+        nodes[u].edges.append(edge)
+        nodes[v].edges.append(edge)
+
 
     # Ensure graph connectivity
     path = list(range(node_count))
@@ -78,7 +91,7 @@ def plot_graph(G, ax, pos):
 
 def show_baruah_table(G, pos):
     """Displays Baruah routing tables for the graph."""
-    global table_frame
+    global table_frame, nodes
     if table_frame:
         table_frame.destroy()
     table_frame = create_frame(table_root)
@@ -94,6 +107,7 @@ def show_baruah_table(G, pos):
         table_frame.grid_rowconfigure(node, weight=1)
         for col, node2 in enumerate(sorted(G_for_baruah.keys())):
             widget = routing_table_widget(table_frame, node2, node, table[node2])
+            nodes[node2][node] = table[node2]
             widget.grid(column=col, row=node, sticky="nsw", padx=5)
 
 def update_adj_matrix():

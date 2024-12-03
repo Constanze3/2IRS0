@@ -75,7 +75,7 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
             insert = True
 
             for d_u, p_u, de_u in tab[u]:
-                if d_u <= d and de_u < de:
+                if d_u <= d and de_u <= de:
                     # our new entry is dominated by an existing entry, it should not be inserted
                     # -> there are no entries in the table that this entry dominates
                     insert = False
@@ -90,8 +90,12 @@ def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
             if insert:
                 tab[u].append((d, v, de))
 
+    my_edges = [(1, 3, 10, 12), (1, 2, 5, 12), (2, 3, 5, 12)]
+    my_edges2 = [(1, 3, 10, 24), (1, 2, 5, 6),  (2, 3, 5, 6)]
+
+
     for i in range(len(nodes) - 1):
-        for edge in edges:
+        for edge in my_edges:
             relax(edge)
 
    # since tables are a set of entries having them as a sorted list is convenient

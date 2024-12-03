@@ -26,7 +26,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
     for node_label in nodes:
         node = nodes[node_label]
         tab[node] = Table(entries=[])
-    tab[destination] = Table(entries=[Entry(node=None, max_time=0, expected_time=0)])
+    tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0)])
 
     def relax(edge: Edge):
         # u, v are the start and end vertices of the edge
@@ -55,7 +55,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
         for entry in tab[v].entries:
             d_v = entry.max_time
             de_v = entry.expected_time
-            p_v = entry.node
+            p_v = entry.parent
             # d is a worst case delay bound
             # it's exact definition is complicated
             d = max(d_min, c_t + d_v)
@@ -67,21 +67,21 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
                     entry_count[neighbor] = 0
                     for entry2 in tab[u].entries:
                         d_u = entry2.max_time
-                        p_u = entry2.node
+                        p_u = entry2.parent
                         de_u = entry2.expected_time
                         if p_u == neighbor:
                             entry_count[neighbor] += 1
 
                 # if there are no entries with v as the parent we insert v
                 if entry_count[v] == 0:
-                    tab[u].entries.append(Entry(max_time=d, node=v, expected_time=de))
+                    tab[u].entries.append(Entry(max_time=d, parent=v, expected_time=de))
                     return
 
             insert = True
 
             for entry in tab[u].entries:
                 d_u = entry.max_time
-                p_u = entry.node
+                p_u = entry.parent
                 de_u = entry.expected_time
                 if d_u <= d and de_u < de:
                     # our new entry is dominated by an existing entry, it should not be inserted
@@ -93,10 +93,10 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
                     # -> our new entry is definitely in the table
                     if not keep_entries or entry_count[p_u] > 1 or v == p_u:
                         # we make sure that there is at least one entry with p_u
-                        tab[u].entries.remove(Entry(max_time=d_u, node=p_u, expected_time=de_u))
+                        tab[u].entries.remove(Entry(max_time=d_u, parent=p_u, expected_time=de_u))
 
             if insert:
-                tab[u].entries.append(Entry(max_time=d, node=v, expected_time=de))
+                tab[u].entries.append(Entry(max_time=d, parent=v, expected_time=de))
 
     for i in range(len(nodes) - 1):
         for edge in edges:
@@ -127,7 +127,7 @@ def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
     return None
 
 
-def check_dominates_or_dominated(new_entry, table) -> None | t.List[Entry]:
+def check_dominates_or_dominated(new_entry, table) -> None | List[Entry]:
     for entry in table.entries:
         if (
             new_entry.max_time >= entry.max_time
@@ -173,8 +173,8 @@ def changed_edge_update_table(node: Node, new_edge):
 def update_table(
     node: Node,
     relevant_edge: Edge,
-    relevant_deadlines: t.List[int],
-    relevant_expected_times: t.List[int],
+    relevant_deadlines: List[int],
+    relevant_expected_times: List[int],
     # updated: t.List[str],
 ):
     global updated

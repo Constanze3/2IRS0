@@ -86,4 +86,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+
+    G = {
+        1: {2: {"typical_delay": 5, "max_delay": 12}, 3: {"typical_delay": 5, "max_delay": 12}},
+        2: {3: {"typical_delay": 5, "max_delay": 12}},
+        3: {}
+    }
+
+    print(baruah(G, 3, False))

@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import typing as t
-from enum import Enum
-
+from typing import List, Dict, Tuple
 
 @dataclass
 class Table:
-    entries: t.List[Entry] = field(default_factory=list)
+    entries: List[Entry] = field(default_factory=list)
 
 
 @dataclass
 class Node:
-    neighbors: t.List[Node]
-    edges: t.List[Edge]
+    neighbors: List[Node]
+    edges: List[Edge]
     label: str = "Node"
     table: Table = field(default_factory=Table)
 
@@ -29,7 +27,7 @@ class Node:
         return f"Node: {self.label}"
 
 
-Tables = t.Dict[Node, Table]
+Tables = Dict[Node, Table]
 
 
 @dataclass
@@ -48,13 +46,13 @@ class Edge:
 
 @dataclass
 class Entry:
-    node: Node | None
+    parent: Node | None
     max_time: int
     expected_time: int
 
     # equals
-    def __eq__(self, other):
-        return self.node == other.node and self.max_time == other.max_time and self.expected_time == other.expected_time
+    def __eq__(self, other: Entry):
+        return self.parent == other.parent and self.max_time == other.max_time and self.expected_time == other.expected_time
     
     # less than
     def __lt__(self, other):
@@ -62,16 +60,16 @@ class Entry:
     
     # hash
     def __hash__(self):
-        return hash((self.node, self.max_time, self.expected_time))
+        return hash((self.parent, self.max_time, self.expected_time))
     
     def __str__(self):
-        return f"Entry: {self.node.label if self.node else "None"} {self.max_time} {self.expected_time}"
+        return f"Entry: {self.parent.label if self.parent else 'None'} {self.max_time} {self.expected_time}"
 
 
 @dataclass
 class Graph:
-    nodes: t.Mapping[str, Node]
-    edges: t.Mapping[t.Tuple[str, str], Edge]
+    nodes: Dict[str, Node]
+    edges: Dict[Tuple[str, str], Edge]
 
     def __str__(self):
         nodes = [str(node) for node in self.nodes.values()]
@@ -82,12 +80,12 @@ class Graph:
 
 @dataclass
 class TemporalGraph:
-    time_to_graph: t.List[Graph]
+    time_to_graph: List[Graph]
 
     def __len__(self):
         return len(self.time_to_graph)
 
-    def __init__(self, graphs: t.List[Graph]):
+    def __init__(self, graphs: List[Graph]):
         self.time_to_graph = graphs
 
     def at_time(self, t: int) -> Graph:

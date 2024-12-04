@@ -11,36 +11,7 @@ class Table:
         return len(self.entries)
 
 
-@dataclass
-class Node:
-    label: str = "Node"
-    table: Table = field(default_factory=Table)
-
-    def get_outgoing_edges(self):
-        edges = []
-        for neighbor in self.neighbors:
-            edges.append(Graph.edges[(self.label, neighbor.label)])
-        return edges
-    
-    def get_incoming_edges(self):
-        edges = []
-        for neighbor in self.neighbors:
-            edges.append(Graph.edges[(neighbor.label, self.label)])
-        return
-
-
-    # equals
-    def __eq__(self, other):
-        return self.label == other.label
-    
-    # hash
-    def __hash__(self):
-        return hash(self.label)
-    
-    def __str__(self):
-        return f"Node {self.label}"
-
-
+Node = int | str
 Tables = Dict[Node, Table]
 
 
@@ -51,15 +22,15 @@ class Edge:
     expected_delay: int
     worst_case_delay: int
 
-    def get_other_side(self, label):
-        return self.to_node if self.from_node.label == label else self.from_node
+    def get_other_side(self, node):
+        return self.to_node if self.from_node == node else self.from_node
     
     # equals
     def __eq__(self, other):
         return self.from_node == other.from_node and self.to_node == other.to_node and self.expected_delay == other.expected_delay and self.worst_case_delay == other.worst_case_delay
     
     def __str__(self):
-        return f"Edge {self.from_node.label} -({self.expected_delay}, {self.worst_case_delay})-> {self.to_node.label}"
+        return f"Edge {self.from_node} -({self.expected_delay}, {self.worst_case_delay})-> {self.to_node}"
 
 
 @dataclass
@@ -81,16 +52,16 @@ class Entry:
         return hash((self.parent, self.max_time, self.expected_time))
     
     def __str__(self):
-        return f"Entry: {self.parent.label if self.parent else 'None'} {self.max_time} {self.expected_time}"
+        return f"Entry: {self.parent} {self.max_time} {self.expected_time}"
     
     def __repr__(self):
         return self.__str__()
 
 @dataclass
 class Graph:
-    data: Dict[Node, List[Edge]] # Adjacency list with redundancy
+    data: Dict[Node, Dict[Node, Tuple[int, int]]]
 
-    def __init__(self: Graph, adjacency_list: Mapping[Node, Mapping[Node, (int, int)]]) -> None:
+    def __init__(self: Graph, adjacency_list: Mapping[Node, Mapping[Node, Tuple[int, int]]]) -> None:
         """
         Constructs a new graph.
 
@@ -98,40 +69,49 @@ class Graph:
         """
         self.data = {}
 
-        for (label, v) in adjacency_list.items():
-            node = Node(label=label)
-            self.data[node] = []
-            for (other_label, (ed, wd)) in v.items():
-                other_node = Node(label=other_label)
-                self.data[node].append(Edge(node, other_node, ed, wd))
+        for (node, v) in adjacency_list.items():
+            self.data[node] = {}
+            for (other_node, edge_weights) in v.items():
+                self.data[node][other_node] = edge_weights
 
-    def get_neighbors_of(self: Graph, node: Node) -> List[Node]:
-        neighbors = []
-        for edge in self.data[node]:
-            neighbors.append(edge.to_node)
-        return neighbors
+    def edge(self, u: Node, v: Node) -> Edge:
+        weights = self.data[u][v]
+        return Edge(u, v, *weights)
     
-    def get_nodes(self: Graph) -> List[Node]:
+    def nodes(self: Graph) -> List[Node]:
         return list(self.data.keys())
     
-    def get_edges(self: Graph) -> List[Edge]:
+    def edges(self: Graph) -> Set[Edge]:
         edges: Set[Edge] = set()
-        for edge_list in self.data.values():
-            for edge in edge_list:
-                edges.add(edge)
-        return list(edges)
-        
-    def get_outgoing_edges(self: Graph, node: Node) -> List[Edge]:
-        return self.data[node]
+
+        for (node, neighbors) in self.data.items():
+            for (neighbor, weights) in neighbors.items():
+                edges.add(Edge(node, neighbor, *weights))
+
+        return edges
+
+    def neighbors(self: Graph, node: Node) -> List[Node]:
+        neighbors = []
+        for neighbor in self.data[node].keys():
+            neighbors.append(neighbor)
+
+        return neighbors
+    
+    def outgoing_edges(self: Graph, node: Node) -> List[Edge]:
+        edges = []
+        for (node, neighbors) in self.data.items():
+            for (neighbor, weights) in neighbors.items():
+                edges.append(Edge(node, neighbor, *weights))
+        return edges
     
     def __str__(self):
         result = ""
-        for (node, edges) in self.data.items():
+        for (node, neighbors) in self.data.items():
             result += f"{node}:\n"
-            if len(edges) == 0:
+            if len(neighbors) == 0:
                 result += "    None\n"
-            for edge in edges:
-                result += f"    {edge}\n"
+            for (neighbor, weights) in neighbors.items():
+                result += f"    -({weights[0]}, {weights[1]})-> {neighbor}\n"
 
         return result 
     

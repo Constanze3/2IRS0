@@ -118,10 +118,10 @@ def insert_into_table(table: Table, node: Node, entry: Entry):
         table.entries.append(entry)
 
 
-def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node, TableDiff]:
+def algorithm(graph: Graph, tab: Tables, e: Edge, value: int) -> Mapping[Node, TableDiff]:
     changes: Mapping[Node, TableDiff] = {}
 
-    for label, node in graph.nodes.items():
+    for node in graph.get_nodes():
         changes[node] = TableDiff([], [])
 
     start = e.from_node
@@ -136,10 +136,10 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node,
     # determine changes in the start node's table
     for entry in tab[start].entries:
         if entry.parent == e.to_node:
-            new_entry = deepcopy(entry)
+            new_entry: Entry = deepcopy(entry)
             new_entry.expected_time += edge_change
 
-            changes[start] = TableDiff(new_entry, deepcopy(entry))
+            changes[start] = TableDiff([new_entry], [deepcopy(entry)])
 
     queue: List[Node] = []
     queue.append(start)
@@ -159,8 +159,8 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node,
         for added_entry in changes[v].added:
             insert_into_table(new_tab_v, v, added_entry)
         
-        for u in graph.nodes:
-            edge = graph.edges[(u, v)]
+        for u in graph.get_nodes():
+            edge = graph.get_edges[(u, v)]
 
             new_tab_u = Table()
 

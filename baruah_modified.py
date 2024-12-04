@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List
 from btypes import Graph, Node, Tables, Edge, Table, Entry, TemporalGraph
+from copy import deepcopy
 
 updated = []
 
@@ -17,10 +18,10 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
     """
 
     # get list of nodes and edges of the graph
-    nodes = graph.get_nodes()
-    edges = graph.get_edges()
+    nodes = graph.nodes()
+    edges = graph.edges()
 
-    shuffle(edges)
+    # shuffle(edges)
 
     # initialization
     tab: Tables = {}
@@ -63,7 +64,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
 
             entry_count = {}
             if keep_entries:
-                for neighbor in graph.get_neighbors_of(u):
+                for neighbor in graph.neighbors(u):
                     entry_count[neighbor] = 0
                     for entry2 in tab[u].entries:
                         d_u = entry2.max_time
@@ -191,7 +192,7 @@ def update_table(
         process_new_entry(node, new_entry)
 
     updated.append(node.label)
-    for e in graph.get_outgoing_edges(node):
+    for e in graph.outgoing_edges(node):
         n = e.get_other_side(node.label)
         if n.label not in updated: 
             relevant_deadlines = [entry.max_time for entry in node.table.entries]
@@ -219,7 +220,7 @@ def time_step(graph: TemporalGraph, t: int):
 
     global updated
     updated = [node.label]
-    for edge in graph.at_time(t).get_outgoing_edges(node):
+    for edge in graph.at_time(t).outgoing_edges(node):
         if edge != changed_edge:
             n = edge.get_other_side(node.label)
             if n.label in updated:
@@ -237,79 +238,22 @@ def time_step(graph: TemporalGraph, t: int):
 
 
 def main():
-    nodes = {
-        "A": Node(neighbors=[], edges=[], label="A", table=Table(entries=[])),
-        "B": Node(neighbors=[], edges=[], label="B", table=Table(entries=[])),
-        "C": Node(neighbors=[], edges=[], label="C", table=Table(entries=[])),
-        "D": Node(neighbors=[], edges=[], label="D", table=Table(entries=[])),
-        "E": Node(neighbors=[], edges=[], label="E", table=Table(entries=[])),
-    }
 
-    edges = {
-        ("A", "B"): Edge(nodes["A"], nodes["B"], 10, 15),
-        ("A", "C"): Edge(nodes["A"], nodes["C"], 12, 18),
-        ("A", "D"): Edge(nodes["A"], nodes["D"], 14, 20),
-        ("B", "C"): Edge(nodes["B"], nodes["C"], 16, 22),
-        ("B", "E"): Edge(nodes["B"], nodes["E"], 18, 25),
-        ("C", "D"): Edge(nodes["C"], nodes["D"], 20, 30),
-        ("C", "E"): Edge(nodes["C"], nodes["E"], 22, 28),
-        ("D", "E"): Edge(nodes["D"], nodes["E"], 24, 35),
-    }
+    g = Graph(
+        adjacency_list={
+            "A": {"B": (10, 15), "C": (12, 18), "D": (14, 20)},
+            "B": {"C": (16, 22), "E": (18, 25)},
+            "C": {"D": (20, 30), "E": (22, 28)},
+            "D": {"E": (24, 35)},
+            "E": {}
+        }
+    )
 
-    # Assign edges to nodes
-    nodes["A"].edges = [edges[("A", "B")], edges[("A", "C")], edges[("A", "D")]]
-    nodes["B"].edges = [edges[("A", "B")], edges[("B", "C")], edges[("B", "E")]]
-    nodes["C"].edges = [edges[("A", "C")], edges[("B", "C")], edges[("C", "D")], edges[("C", "E")]]
-    nodes["D"].edges = [edges[("A", "D")], edges[("C", "D")], edges[("D", "E")]]
-    nodes["E"].edges = [edges[("B", "E")], edges[("C", "E")], edges[("D", "E")]]
+    g_copy = deepcopy(g)
+    g_copy.get_edge("C", "D").expected_delay = 30
 
-    # Assign neighbors to nodes
-    nodes["A"].neighbors = [nodes["B"], nodes["C"], nodes["D"]]
-    nodes["B"].neighbors = [nodes["A"], nodes["C"], nodes["E"]]
-    nodes["C"].neighbors = [nodes["A"], nodes["B"], nodes["D"], nodes["E"]]
-    nodes["D"].neighbors = [nodes["A"], nodes["C"], nodes["E"]]
-    nodes["E"].neighbors = [nodes["B"], nodes["C"], nodes["D"]]
-
-    g = Graph(nodes=nodes, edges=edges)
-
-    # Create a copy of the graph with one edge changed
-    nodes_copy = {
-        "A": Node(neighbors=[], edges=[], label="A", table=Table(entries=[])),
-        "B": Node(neighbors=[], edges=[], label="B", table=Table(entries=[])),
-        "C": Node(neighbors=[], edges=[], label="C", table=Table(entries=[])),
-        "D": Node(neighbors=[], edges=[], label="D", table=Table(entries=[])),
-        "E": Node(neighbors=[], edges=[], label="E", table=Table(entries=[])),
-    }
-
-    edges_copy = {
-        ("A", "B"): Edge(nodes_copy["A"], nodes_copy["B"], 10, 15),
-        ("A", "C"): Edge(nodes_copy["A"], nodes_copy["C"], 12, 18),
-        ("A", "D"): Edge(nodes_copy["A"], nodes_copy["D"], 14, 20),
-        ("B", "C"): Edge(nodes_copy["B"], nodes_copy["C"], 16, 22),
-        ("B", "E"): Edge(nodes_copy["B"], nodes_copy["E"], 18, 25),
-        ("C", "D"): Edge(nodes_copy["C"], nodes_copy["D"], 21, 33),  # Changed edge
-        ("C", "E"): Edge(nodes_copy["C"], nodes_copy["E"], 22, 28),
-        ("D", "E"): Edge(nodes_copy["D"], nodes_copy["E"], 24, 35),
-    }
-
-    # Assign edges to copied nodes
-    nodes_copy["A"].edges = [edges_copy[("A", "B")], edges_copy[("A", "C")], edges_copy[("A", "D")]]
-    nodes_copy["B"].edges = [edges_copy[("A", "B")], edges_copy[("B", "C")], edges_copy[("B", "E")]]
-    nodes_copy["C"].edges = [edges_copy[("A", "C")], edges_copy[("B", "C")], edges_copy[("C", "D")], edges_copy[("C", "E")]]
-    nodes_copy["D"].edges = [edges_copy[("A", "D")], edges_copy[("C", "D")], edges_copy[("D", "E")]]
-    nodes_copy["E"].edges = [edges_copy[("B", "E")], edges_copy[("C", "E")], edges_copy[("D", "E")]]
-
-    # Assign neighbors to copied nodes
-    nodes_copy["A"].neighbors = [nodes_copy["B"], nodes_copy["C"], nodes_copy["D"]]
-    nodes_copy["B"].neighbors = [nodes_copy["A"], nodes_copy["C"], nodes_copy["E"]]
-    nodes_copy["C"].neighbors = [nodes_copy["A"], nodes_copy["B"], nodes_copy["D"], nodes_copy["E"]]
-    nodes_copy["D"].neighbors = [nodes_copy["A"], nodes_copy["C"], nodes_copy["E"]]
-    nodes_copy["E"].neighbors = [nodes_copy["B"], nodes_copy["C"], nodes_copy["D"]]
-
-    g_copy = Graph(nodes=nodes_copy, edges=edges_copy)
-
-    original_baruah(g, nodes["E"], False)
-    original_baruah(g_copy, nodes_copy["E"], False)
+    original_baruah(g, g.get_node("E"), False)
+    original_baruah(g_copy, g_copy.get_node("E"), False)
 
 
     graphs = TemporalGraph([g, g_copy])
@@ -318,8 +262,7 @@ def main():
     def print_state(graph: Graph, t: int):
         print(f"Time {t}")
         print(graph)
-        for node in graph.nodes:
-            n = graph.nodes[node]
+        for n in graph.get_nodes():
             print(f"Node {n.label}")
             for entry in n.table.entries:
                 print(

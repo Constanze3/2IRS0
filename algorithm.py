@@ -1,3 +1,4 @@
+from baruah_modified import original_baruah
 from btypes import Graph, Node, Edge, Entry, Tables, Table
 from typing import List, Mapping
 from copy import deepcopy
@@ -11,6 +12,74 @@ class TableDiff:
     
     def __len__(self):
         return len(self.removed) + len(self.added)
+    
+def difference(old_tables: Tables, new_tables: Tables) -> Mapping[Node, TableDiff]:
+    """
+    Finds for each table the difference between old and new tables.
+
+    It returns for each table what are entries that were removed and what are entries 
+    that were added to the old table to get to the new table.
+    """
+    assert(len(old_tables) == len(new_tables))
+
+    result = {}
+    for node, old_table in old_tables.items():
+        new_table = new_tables[node]
+
+        # entries in old table that were removed to get to the new table
+        removed = []
+        # entries in new table that were an addition to the entries of old table
+        added = []
+
+        index_old = 0
+        index_new = 0
+
+        while(True):
+            if len(old_table) <= index_old and len(new_table) <= index_new:
+                # no more entries to consider
+                break
+
+            if len(old_table) <= index_old:
+                entry_new = new_table.entries[index_new]
+                # entry_new only exists in the new table -> it was added
+                added.append(entry_new)
+                index_new += 1
+                continue
+
+            if len(new_table) <= index_new:
+                entry_old = old_table.entries[index_old]
+                # entry_old only exist in the old table -> it was removed
+                removed.append(entry_old)
+                index_old += 1
+                continue
+            
+            # at this point: index_old < len(old_table) and index_new < len(new_table) 
+
+            entry_old = old_table.entries[index_old]
+            entry_new = new_table.entries[index_new]
+
+            if entry_old == entry_new:
+                # entry exists in both tables -> not a change
+                index_new += 1
+                index_old += 1
+                continue
+
+            if entry_old < entry_new:
+                # entry_old was "skipped over" in new table, the table is sorted -> the new table doesn't contain it -> it was removed
+                removed.append(entry_old)
+                index_old += 1
+                continue
+            
+            if entry_new < entry_old:
+                # entry_new was "skipped over" in old table, the table is sorted -> the old table doesn't contain it -> it was added
+                added.append(entry_new)
+                index_new += 1
+                continue
+        
+        result[node] = TableDiff(removed, added)
+
+    return result
+
 
 def insert_into_table(table: Table, node: Node, entry: Entry):
     """
@@ -52,7 +121,7 @@ def insert_into_table(table: Table, node: Node, entry: Entry):
 def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node, TableDiff]:
     changes: Mapping[Node, TableDiff] = {}
 
-    for node in graph.nodes:
+    for label, node in graph.nodes.items():
         changes[node] = TableDiff([], [])
 
     start = e.from_node
@@ -159,10 +228,10 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node,
 def test_insert_into_table():
     table = Table()
 
-    a = Node(label="a", neighbors=[], edges=[])
-    b = Node(label="b", neighbors=[], edges=[])
-    c = Node(label="c", neighbors=[], edges=[])
-    v = Node(label="v", neighbors=[a, b, c], edges=[])
+    a = Node(label="a", neighbors=[])
+    b = Node(label="b", neighbors=[])
+    c = Node(label="c", neighbors=[])
+    v = Node(label="v", neighbors=[a, b, c])
 
     e1 = Entry(a, 10, 19)
     e2 = Entry(b, 20, 19)
@@ -179,6 +248,8 @@ def test_insert_into_table():
 
     actual = table.entries
     actual.sort()
+
+    print(expected)
 
     assert(expected == actual)
 

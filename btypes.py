@@ -7,13 +7,28 @@ from typing import List, Dict, Tuple
 class Table:
     entries: List[Entry] = field(default_factory=list)
 
+    def __len__(self):
+        return len(self.entries)
+
 
 @dataclass
 class Node:
     neighbors: List[Node]
-    edges: List[Edge]
-    label: str = "Node"
+    label: str
     table: Table = field(default_factory=Table)
+
+    def get_outgoing_edges(self):
+        edges = []
+        for neighbor in self.neighbors:
+            edges.append(Graph.edges[(self.label, neighbor.label)])
+        return edges
+    
+    def get_incoming_edges(self):
+        edges = []
+        for neighbor in self.neighbors:
+            edges.append(Graph.edges[(neighbor.label, self.label)])
+        return
+
 
     # equals
     def __eq__(self, other):
@@ -64,6 +79,9 @@ class Entry:
     
     def __str__(self):
         return f"Entry: {self.parent.label if self.parent else 'None'} {self.max_time} {self.expected_time}"
+    
+    def __repr__(self):
+        return self.__str__()
 
 
 @dataclass

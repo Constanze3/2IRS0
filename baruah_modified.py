@@ -50,8 +50,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
         # the next node along this path is p_v
 
         # d_min is the smallest worst-case delay bound from u to the destination
-        a = tab[v]
-        d_min = c_w + min([entry.expected_time for entry in tab[v].entries])
+        d_min = c_w + min([entry.max_time for entry in tab[v].entries])
 
         for entry in tab[v].entries:
             d_v = entry.max_time
@@ -84,7 +83,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
                 d_u = entry.max_time
                 p_u = entry.parent
                 de_u = entry.expected_time
-                if d_u <= d and de_u < de:
+                if d_u <= d and de_u <= de:
                     # our new entry is dominated by an existing entry, it should not be inserted
                     # -> there are no entries in the table that this entry dominates
                     insert = False
@@ -108,8 +107,8 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
         table.entries.sort()
 
     # assign the tables to the nodes
-    for node in nodes:
-        node.table = tab[node]
+    # for node in nodes:
+    #     node.table = tab[node]
 
     return tab
 
@@ -120,8 +119,8 @@ def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
     old_graph = graphs.at_time(time - 1)
     new_graph = graphs.at_time(time)
 
-    old_edges = old_graph.get_edges()
-    new_edges = new_graph.get_edges()
+    old_edges = old_graph.edges()
+    new_edges = new_graph.edges()
     # assuming there is only 1 edge that changes
 
     for edge in new_edges:
@@ -131,149 +130,150 @@ def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
     return None
 
 
-def check_dominates_or_dominated(new_entry, table) -> None | List[Entry]:
-    for entry in table.entries:
-        if (
-            new_entry.max_time >= entry.max_time
-            and new_entry.expected_time >= entry.expected_time
-        ):
-            return None
-        elif (
-            new_entry.max_time <= entry.max_time
-            and new_entry.expected_time <= entry.expected_time
-        ):
-            return [entry]
-    return []
+# def check_dominates_or_dominated(new_entry, table) -> None | List[Entry]:
+#     for entry in table.entries:
+#         if (
+#             new_entry.max_time >= entry.max_time
+#             and new_entry.expected_time >= entry.expected_time
+#         ):
+#             return None
+#         elif (
+#             new_entry.max_time <= entry.max_time
+#             and new_entry.expected_time <= entry.expected_time
+#         ):
+#             return [entry]
+#     return []
 
 
-def process_new_entry(node: Node, entry: Entry):
-    status = check_dominates_or_dominated(entry, node.table)
-    if status == None:
-        return
-    elif len(status) > 0:
-        # remove the dominated entry
-        node.table.entries.remove(status[0])
-    node.table.entries.append(entry)
-    return
+# def process_new_entry(node: Node, table: Table, entry: Entry) -> None:
+#     status = check_dominates_or_dominated(entry, table)
+#     if status == None:
+#         return
+#     elif len(status) > 0:
+#         # remove the dominated entry
+#         table.entries.remove(status[0])
+#     table.entries.append(entry)
+#     return
 
 
-def changed_edge_update_table(node: Node, new_edge):
-    # create entries that use that edge
-    destination_node = new_edge.to_node
+# def changed_edge_update_table(node: Node, table: Table, new_edge):
+#     # create entries that use that edge
+#     destination_node = new_edge.to_node
 
-    # find an entry for every entry in the destination node's table
-    # taking in account the new edge
-    for entry in destination_node.table.entries:
-        new_entry = Entry(
-            node,
-            new_edge.worse_case_delay + entry.max_time,
-            new_edge.expected_delay + entry.expected_time,
-        )  # check this
-        process_new_entry(node, new_entry)
+#     # find an entry for every entry in the destination node's table
+#     # taking in account the new edge
+#     for entry in destination_node.table.entries:
+#         new_entry = Entry(
+#             node,
+#             new_edge.worse_case_delay + entry.max_time,
+#             new_edge.expected_delay + entry.expected_time,
+#         )  # check this
+#         process_new_entry(node, table, new_entry)
 
-    return
-
-
-def update_table(
-    graph: Graph,
-    node: Node,
-    relevant_edge: Edge,
-    relevant_deadlines: List[int],
-    relevant_expected_times: List[int],
-    # updated: t.List[str],
-):
-    global updated
-    # TODO: find a better way to figure out the relevant deadlines and expected times
-    i = 0
-    for deadline in relevant_deadlines:
-        exp_time = relevant_expected_times[i]
-        new_entry = Entry(relevant_edge.to_node, deadline, exp_time)
-
-        process_new_entry(node, new_entry)
-
-    updated.append(node.label)
-    for e in graph.outgoing_edges(node):
-        n = e.get_other_side(node.label)
-        if n.label not in updated: 
-            relevant_deadlines = [entry.max_time for entry in node.table.entries]
-            relevant_expected_times = [entry.expected_time for entry in node.table.entries]
-            update_table(graph, n, e, relevant_deadlines, relevant_expected_times)
-    i += 1
+#     return
 
 
-# what happens when time advances one step?
-# ASSUMPTION: ONLY ONE EDGE CHANGES
-def time_step(graph: TemporalGraph, t: int):
+# def update_table(
+#     graph: Graph,
+#     table: Table,
+#     node: Node,
+#     relevant_edge: Edge,
+#     relevant_deadlines: List[int],
+#     relevant_expected_times: List[int],
+#     # updated: t.List[str],
+# ):
+#     global updated
+#     # TODO: find a better way to figure out the relevant deadlines and expected times
+#     i = 0
+#     for deadline in relevant_deadlines:
+#         exp_time = relevant_expected_times[i]
+#         new_entry = Entry(parent=relevant_edge.to_node, max_time=deadline, expected_time=exp_time)
 
-    # find the edge that changed
-    changed_edge = get_single_edge_change(graph, t)
+#         process_new_entry(node, table, new_entry)
 
-    if changed_edge == None:
-        return
-    print(f"Changed edge: {changed_edge.from_node.label} -> {changed_edge.to_node.label}")
+#     updated.append(node)
+#     for e in graph.outgoing_edges(node):
+#         n = e.get_other_side(node)
+#         if n not in updated: 
+#             relevant_deadlines = [entry.max_time for entry in table.entries]
+#             relevant_expected_times = [entry.expected_time for entry in table.entries]
+#             update_table(graph, n, e, relevant_deadlines, relevant_expected_times)
+#     i += 1
 
-    # node that starts propagation: source of the changed edge
-    node: Node = changed_edge.from_node
 
-    # update the routing table for the node
-    changed_edge_update_table(node, changed_edge)
+# # what happens when time advances one step?
+# # ASSUMPTION: ONLY ONE EDGE CHANGES
+# def time_step(graph: TemporalGraph, t: int):
 
-    global updated
-    updated = [node.label]
-    for edge in graph.at_time(t).outgoing_edges(node):
-        if edge != changed_edge:
-            n = edge.get_other_side(node.label)
-            if n.label in updated:
-                if len(updated) == len(graph.at_time(t).get_nodes()):
-                    break
-                continue
+#     # find the edge that changed
+#     changed_edge = get_single_edge_change(graph, t)
+
+#     if changed_edge == None:
+#         return
+#     print(f"Changed edge: {changed_edge.from_node.label} -> {changed_edge.to_node.label}")
+
+#     # node that starts propagation: source of the changed edge
+#     node: Node = changed_edge.from_node
+
+#     # update the routing table for the node
+#     changed_edge_update_table(node, changed_edge)
+
+#     global updated
+#     updated = [node.label]
+#     for edge in graph.at_time(t).outgoing_edges(node):
+#         if edge != changed_edge:
+#             n = edge.get_other_side(node.label)
+#             if n.label in updated:
+#                 if len(updated) == len(graph.at_time(t).get_nodes()):
+#                     break
+#                 continue
     
-            update_table(
-                graph.at_time(t),
-                n,
-                edge,
-                [changed_edge.worst_case_delay],
-                [changed_edge.expected_delay],
-            )
+#             update_table(
+#                 graph.at_time(t),
+#                 n,
+#                 edge,
+#                 [changed_edge.worst_case_delay],
+#                 [changed_edge.expected_delay],
+#             )
 
 
-def main():
+# def main():
 
-    g = Graph(
-        adjacency_list={
-            "A": {"B": (10, 15), "C": (12, 18), "D": (14, 20)},
-            "B": {"C": (16, 22), "E": (18, 25)},
-            "C": {"D": (20, 30), "E": (22, 28)},
-            "D": {"E": (24, 35)},
-            "E": {}
-        }
-    )
+#     g = Graph(
+#         adjacency_list={
+#             "A": {"B": (10, 15), "C": (12, 18), "D": (14, 20)},
+#             "B": {"C": (16, 22), "E": (18, 25)},
+#             "C": {"D": (20, 30), "E": (22, 28)},
+#             "D": {"E": (24, 35)},
+#             "E": {}
+#         }
+#     )
 
-    g_copy = deepcopy(g)
-    g_copy.get_edge("C", "D").expected_delay = 30
+#     g_copy = deepcopy(g)
+#     g_copy.edge("C", "D").expected_delay = 30
 
-    original_baruah(g, g.get_node("E"), False)
-    original_baruah(g_copy, g_copy.get_node("E"), False)
-
-
-    graphs = TemporalGraph([g, g_copy])
-    print(graphs)
-
-    def print_state(graph: Graph, t: int):
-        print(f"Time {t}")
-        print(graph)
-        for n in graph.get_nodes():
-            print(f"Node {n.label}")
-            for entry in n.table.entries:
-                print(
-                    entry
-                )
-        print("\n")
-
-    for t in range(len(graphs)):
-        time_step(graphs, t)
-        print_state(graphs.at_time(t), t)
+#     original_baruah(g, g.get_node("E"), False)
+#     original_baruah(g_copy, g_copy.get_node("E"), False)
 
 
-if __name__ == "__main__":
-    main()
+#     graphs = TemporalGraph([g, g_copy])
+#     print(graphs)
+
+#     def print_state(graph: Graph, t: int):
+#         print(f"Time {t}")
+#         print(graph)
+#         for n in graph.get_nodes():
+#             print(f"Node {n.label}")
+#             for entry in n.table.entries:
+#                 print(
+#                     entry
+#                 )
+#         print("\n")
+
+#     for t in range(len(graphs)):
+#         time_step(graphs, t)
+#         print_state(graphs.at_time(t), t)
+
+
+# if __name__ == "__main__":
+#     main()

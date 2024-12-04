@@ -31,21 +31,24 @@ class Edge:
     
     def __str__(self):
         return f"Edge {self.from_node} -({self.expected_delay}, {self.worst_case_delay})-> {self.to_node}"
+    
+    def __hash__(self):
+        return hash((self.from_node, self.to_node, self.expected_delay, self.worst_case_delay))
 
 
 @dataclass
 class Entry:
-    parent: Node | None
     max_time: int
+    parent: Node | None
     expected_time: int
 
     # equals
     def __eq__(self, other: Entry):
-        return self.parent == other.parent and self.max_time == other.max_time and self.expected_time == other.expected_time
+        return hash(self) == hash(other) 
     
     # less than
     def __lt__(self, other):
-        return self.expected_time < other.expected_time
+        return hash(self) < hash(other)
     
     # hash
     def __hash__(self):
@@ -77,6 +80,9 @@ class Graph:
     def edge(self, u: Node, v: Node) -> Edge:
         weights = self.data[u][v]
         return Edge(u, v, *weights)
+
+    def modify_edge(self, u:Node, v:Node, data: Tuple[int, int]):
+        self.data[u][v] = data
     
     def nodes(self: Graph) -> List[Node]:
         return list(self.data.keys())
@@ -97,11 +103,26 @@ class Graph:
 
         return neighbors
     
+    def neighbor_of(self: Graph, node: Node) -> List[Node]:
+        neighborof = []
+        for (n, edges) in self.data.items():
+            if node in edges.keys():
+                neighborof.append(n)
+        return neighborof
+        
+    
     def outgoing_edges(self: Graph, node: Node) -> List[Edge]:
         edges = []
         for (node, neighbors) in self.data.items():
             for (neighbor, weights) in neighbors.items():
                 edges.append(Edge(node, neighbor, *weights))
+        return edges
+    
+    def incoming_edges(self: Graph, node: Node) -> List[Edge]:
+        edges = []
+        for (n, neighbors) in self.data.items():
+            if node in neighbors.keys():
+                edges.append(Edge(n, node, *neighbors[node]))
         return edges
     
     def __str__(self):

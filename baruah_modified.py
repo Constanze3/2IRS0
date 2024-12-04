@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from btypes import *
+from typing import List
+from btypes import Graph, Node, Tables, Edge, Table, Entry, TemporalGraph
 
 updated = []
 
@@ -16,15 +17,14 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
     """
 
     # get list of nodes and edges of the graph
-    nodes = graph.nodes
-    edges = [edge for edge in graph.edges.values()]
+    nodes = graph.get_nodes()
+    edges = graph.get_edges()
 
     shuffle(edges)
 
     # initialization
     tab: Tables = {}
-    for node_label in nodes:
-        node = nodes[node_label]
+    for node in nodes:
         tab[node] = Table(entries=[])
     tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0)])
 
@@ -35,7 +35,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
         u = edge.from_node
         v = edge.to_node
         c_t = edge.expected_delay
-        c_w = edge.worse_case_delay
+        c_w = edge.worst_case_delay
 
         # this function attempts to use the entries in tab[v] to update tab[u]
 
@@ -63,7 +63,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
 
             entry_count = {}
             if keep_entries:
-                for neighbor in u.neighbors:
+                for neighbor in graph.get_neighbors_of(u):
                     entry_count[neighbor] = 0
                     for entry2 in tab[u].entries:
                         d_u = entry2.max_time
@@ -107,7 +107,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
         table.entries.sort()
 
     # assign the tables to the nodes
-    for node in nodes.values():
+    for node in nodes:
         node.table = tab[node]
 
     return tab
@@ -118,11 +118,14 @@ def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
 
     old_graph = graphs.at_time(time - 1)
     new_graph = graphs.at_time(time)
+
+    old_edges = old_graph.get_edges()
+    new_edges = new_graph.get_edges()
     # assuming there is only 1 edge that changes
 
-    for edge in new_graph.edges:
-        if old_graph.edges[edge].expected_delay != new_graph.edges[edge].expected_delay:
-            return new_graph.edges[edge]
+    for edge in new_edges:
+        if edge not in old_edges:
+            return edge
 
     return None
 
@@ -171,6 +174,7 @@ def changed_edge_update_table(node: Node, new_edge):
 
 
 def update_table(
+    graph: Graph,
     node: Node,
     relevant_edge: Edge,
     relevant_deadlines: List[int],
@@ -187,12 +191,12 @@ def update_table(
         process_new_entry(node, new_entry)
 
     updated.append(node.label)
-    for e in node.edges:
+    for e in graph.get_outgoing_edges(node):
         n = e.get_other_side(node.label)
         if n.label not in updated: 
             relevant_deadlines = [entry.max_time for entry in node.table.entries]
             relevant_expected_times = [entry.expected_time for entry in node.table.entries]
-            update_table(n, e, relevant_deadlines, relevant_expected_times)
+            update_table(graph, n, e, relevant_deadlines, relevant_expected_times)
     i += 1
 
 
@@ -215,20 +219,20 @@ def time_step(graph: TemporalGraph, t: int):
 
     global updated
     updated = [node.label]
-    for edge in node.edges:
+    for edge in graph.at_time(t).get_outgoing_edges(node):
         if edge != changed_edge:
             n = edge.get_other_side(node.label)
             if n.label in updated:
-                if len(updated) == len(graph.at_time(t).nodes):
+                if len(updated) == len(graph.at_time(t).get_nodes()):
                     break
                 continue
     
             update_table(
+                graph.at_time(t),
                 n,
                 edge,
-                [changed_edge.worse_case_delay],
+                [changed_edge.worst_case_delay],
                 [changed_edge.expected_delay],
-                # [node.label],
             )
 
 

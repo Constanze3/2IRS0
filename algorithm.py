@@ -153,8 +153,35 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: float) -> Mapping[Node,
                         new_entry = Entry(d, v, de)
                         insert_into_table(new_tab_u, u, new_entry)
             
-            # calculate changes add to changes
-            # if len(changes) > 0 queue.append(u)
+            diff = difference(tab[u], new_tab_u)
+            changes[u] = diff
+            
+            if len(diff) > 0:
+                queue.append(u)
+
+def test_algorithm():
+    G = Graph()
+    G = {
+        1: {2: {'typical_delay': 4, 'max_delay': 10}, 4: {'typical_delay': 15, 'max_delay': 25}},
+        2: {3: {'typical_delay': 4, 'max_delay': 10}, 4: {'typical_delay': 12, 'max_delay': 15}},
+        3: {4: {'typical_delay': 4, 'max_delay': 10}},
+        4: {}
+    }
+
+    tables = baruah(G, 4, True)
+
+    changed_entries = determine_changed_entries(G, 4, tables)
+    print(changed_entries.on_increment)
+
+    e = (2, 3)
+    ew = G[e[0]][e[1]]
+    
+    ew["typical_delay"] += 1
+    new_tables = baruah(G, 4, True)
+    
+    for node, diff in difference(tables, new_tables).items():
+        print(f"from {node} removed {diff.removed}")
+    
 
 def test_insert_into_table():
     table = Table()

@@ -43,7 +43,7 @@ class Entry:
     expected_time: int
 
     # equals
-    def __eq__(self, other: Entry):
+    def __eq__(self, other):
         return hash(self) == hash(other) 
     
     # less than

@@ -1,6 +1,6 @@
 from baruah_modified import original_baruah
 from btypes import Graph, Node, Edge, Entry, Tables, Table
-from typing import List, Mapping, Dict
+from typing import List, Mapping, Dict, Tuple
 from copy import deepcopy
 import math
 
@@ -128,7 +128,8 @@ def insert_into_table(table: Table, graph: Graph, node: Node, entry: Entry):
         table.entries.append(entry)
 
 
-def algorithm(graph: Graph, tab: Tables, e: Edge, value: int) -> Dict[Node, TableDiff]:
+def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value: int) -> Dict[Node, TableDiff]:
+    e = graph.edge(*changed_edge)
     changes: Mapping[Node, TableDiff] = {}
 
     for node in graph.nodes():
@@ -156,8 +157,8 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: int) -> Dict[Node, Tabl
 
     changes[start_node] = difference(tab[start_node], new_start_node_table)
 
-    print(changes)
-    print()
+    # print(changes)
+    # print()
 
     queue: List[Node] = []
     queue.append(start_node)
@@ -259,74 +260,74 @@ def algorithm(graph: Graph, tab: Tables, e: Edge, value: int) -> Dict[Node, Tabl
     return changes
 
 def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, TableDiff]:
-    # return a map, for each node return the difference
+    """
+    Return a map, for each node return the difference.
+    """
     output_differences = {}
     for (u, old_table) in old_tables.items(): 
         output_differences[u] = difference(old_table, new_tables[u])
     return output_differences
 
-def test_on_graph(G, edge, new_delay):
-    tables = original_baruah(G, 4, True)
+def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], new_typical_delay: int):
+    old_tables = original_baruah(graph, destination, True)
 
-    #note that algorithm takes the old graph, not the graph after it has
-    changes = algorithm(G, tables, G.edge(*edge), new_delay)
-    G.modify_edge(*edge, (new_delay, G.edge(*edge).worst_case_delay))
-    print("old tables: ")
-    for node, table in tables.items():
-        print(f"{node}: {table}")
+    actual_changes = algorithm(graph, old_tables, edge, new_typical_delay)
+    
+    new_graph = deepcopy(graph)
+    new_graph.modify_edge(*edge, (new_typical_delay, graph.edge(*edge).worst_case_delay))
+    new_tables = original_baruah(new_graph, destination, True)
+    expected_changes = difference_tables(old_tables, new_tables)
 
-    # changed_entries = determine_changed_entries(G, 4, tables)
-    # print(changed_entries.on_increment)
-    new_tables = original_baruah(G, 4, True)
-    print("\nnew tables: ")
-    for node, table in new_tables.items():
-        print(f"{node}: {table}")
+    print(f"--- {name} ---");
+    print()
 
-    print("\n---running test case---")
-    baruah_differences = difference_tables(tables, new_tables)
-    for node, changes in changes.items():
-        b_changes = baruah_differences[node]
-        # assert(changes == b_changes)
-        print(f"Entry for node: {node}")
-        # if changes != b_changes:
-        #     print(f"added too much {[x for x in changes.added if x not in b_changes.added]}")
-        #     print(f"did not add {[x for x in b_changes.added if x not in changes.added]}")
-        #     print(f"removed too much {[x for x in b_changes.added if x not in changes.added]}")
-        #     print(f"did not remove {[x for x in b_changes.removed if x not in changes.removed]}")
-        print(f"algo changes: {changes}")
-        print(f"baruah changes: {b_changes}")
-        print(f"------PASS: {changes == b_changes}------\n")
+    if actual_changes != expected_changes:
+        print("FAIL")
+        print()
 
-def test_algorithm():
-    G = Graph({
-        1: {2: (4, 10), 4: (15, 25)},
-        2: {3: (4, 10), 4: (12, 15)},
-        3: {4: (4, 10)},
-        4: {}
-    })
-    test_on_graph(G, (2, 3), 5)
+        print("graph:")
+        print(graph)
+        print()
 
+        print(f"destination: {destination}, edge: {edge}, new typical delay: {new_typical_delay}")
+        print()
+        
+        print("where actual != expected:")
+        for node, actual_change in actual_changes.items():
+            if actual_change != expected_changes[node]:
+                print("    actual:")
+                print("    " + str(actual_changes))
+                print("    expected:")
+                print("    " + str(expected_changes))
+                print()
+
+        print("old tables:")
+        for node, table in old_tables.items():
+            print(f"{node}: {table}")
+        print()
+
+        print("new tables:")
+        for node, table in new_tables.items():
+            print(f"{node}: {table}")
+        print()
+    else:
+        print("PASS")
+    print()
 
 def dense_test():
-    test_counter = 1
-    G = Graph({
+    g1 = Graph({
         1: {2: (4, 10), 4: (15, 25)},
         2: {3: (4, 10), 4: (12, 15)},
         3: {4: (4, 10)},
         4: {}
     })
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G, (1, 2), 9)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G, (1, 4), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G, (2, 3), 5)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G, (3, 4), 10)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G, (3, 4), 1)
+    test_algorithm("test1", g1, 4, (1, 2), 9)
+    test_algorithm("test2", g1, 4, (1, 4), 1)
+    test_algorithm("test3", g1, 4, (2, 3), 5)
+    test_algorithm("test4", g1, 4, (3, 4), 10)
+    test_algorithm("test5", g1, 4, (3, 4), 1)
 
-    G1 = Graph({
+    g2 = Graph({
         1: {2: (5, 12), 3: (8, 20)},
         2: {3: (3, 8), 4: (10, 18), 5: (7, 15)},
         3: {4: (6, 10), 5: (9, 20)},
@@ -334,36 +335,29 @@ def dense_test():
         5: {6: (4, 10)},
         6: {}
     })
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G1, (5, 6), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G1, (1, 3), 11)
+    test_algorithm("test6", g2, 4, (5, 6), 1)
+    test_algorithm("test7", g2, 4, (1, 3), 11)
 
-    G2 = Graph({
+    g3 = Graph({
         1: {2: (3, 7), 4: (12, 25)},
         2: {3: (4, 10)},
         3: {},
         4: {5: (7, 18)},
         5: {}
     })
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G2, (4, 5), 17)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G2, (4, 5), 1)
+    test_algorithm("test8", g3, 4, (4, 5), 17)
+    test_algorithm("test9", g3, 4, (4, 5), 1)
 
-    G3 = Graph({
+    g4 = Graph({
         1: {2: (4, 8), 3: (6, 15)},
         2: {3: (5, 12), 4: (3, 7)},
         3: {4: (4, 10), 1: (8, 20)},
         4: {1: (2, 6), 2: (3, 9)}
     })
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G3, (1, 3), 14)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G3, (2, 4), 4)
-    
+    test_algorithm("test10", g4, 4, (1, 3), 14)
+    test_algorithm("test11", g4, 4, (2, 4), 4)
 
-    G4 = Graph({
+    g5 = Graph({
         1: {2: (3, 9), 3: (5, 15), 4: (7, 18)},
         2: {3: (4, 10), 4: (6, 14), 5: (8, 20)},
         3: {4: (3, 7), 5: (5, 12), 6: (9, 18)},
@@ -372,42 +366,27 @@ def dense_test():
         6: {7: (6, 12)},
         7: {}
     })
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G4, (1, 4), 17)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G4, (6, 7), 11)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G4, (6, 7), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G4, (3, 6), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G4, (3, 6), 17)
+    test_algorithm("test12", g5, 4, (1, 4), 17)
+    test_algorithm("test13", g5, 4, (6, 7), 11)
+    test_algorithm("test14", g5, 4, (6, 7), 1)
+    test_algorithm("test15", g5, 4, (3, 6), 1)
+    test_algorithm("test16", g5, 4, (4, 6), 17)
 
-    G5 = Graph({
+    g6 = Graph({
         1: {2: (3, 7), 3: (4, 8), 4: (5, 10)},
         2: {1: (3, 7), 3: (2, 6), 4: (4, 9)},
         3: {1: (4, 8), 2: (2, 6), 4: (3, 7)},
         4: {1: (5, 10), 2: (4, 9), 3: (3, 7)}
     })
 
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (1, 4), 7)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (2, 4), 8)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (2, 4), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (3, 1), 1)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (3, 1), 7)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (4, 1), 2)
-    print(f"--- Test {test_counter} ---"); test_counter += 1
-    test_on_graph(G5, (4, 2), 8)
-
-    # for node, diff in difference(tables, new_tables).items():
-    #     print(f"from {node} removed {diff.removed}")
-
+    test_algorithm("test17", g6, 4, (1, 4), 7)
+    test_algorithm("test18", g6, 4, (2, 4), 8)
+    test_algorithm("test19", g6, 4, (2, 4), 1)
+    test_algorithm("test20", g6, 4, (3, 1), 1)
+    test_algorithm("test21", g6, 4, (3, 1), 7)
+    test_algorithm("test22", g6, 4, (4, 1), 2)
+    test_algorithm("test23", g6, 4, (4, 2), 8)
+    
 def test_insert_into_table():
     table = Table()
     
@@ -440,5 +419,4 @@ def test_insert_into_table():
 
 
 if __name__ == "__main__":
-    # test_algorithm()
     dense_test()

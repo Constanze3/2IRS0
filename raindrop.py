@@ -24,7 +24,8 @@ class NodeData:
     table: Table
 
 
-def reduce_table(table: Table):
+def reduce_table(node_data: NodeData):
+    table = node_data.table
     new_table = deepcopy(table)
     for entry in table.entries:
         for entry2 in table.entries:
@@ -71,7 +72,7 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
         node_data.table.entries.remove(entry)
     for entry in new_entries:
         node_data.table.entries.append(entry)
-    reduce_table(node_data.table)
+    reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
     new_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
     # already notify parents
@@ -108,7 +109,7 @@ def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeD
         node_data.table.entries.remove(entry)
     for entry in new_entries:
         node_data.table.entries.append(entry)
-    reduce_table(node_data.table)
+    reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
 
     return

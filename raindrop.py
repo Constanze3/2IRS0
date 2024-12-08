@@ -1,5 +1,3 @@
-from audioop import max
-from turtledemo.chaos import f
 from copy import deepcopy
 import random
 from baruah_modified import original_baruah
@@ -14,7 +12,8 @@ NodeLabel = int | str
 
 @dataclass
 class NeighborUpdate:
-    deadline: int
+    from_node: Node
+    # deadline: int
     difference: int
 
 
@@ -39,7 +38,9 @@ def reduce_table(table: Table):
                     new_table.entries.remove(entry2)
     table.entries = new_table.entries
 
-
+# HYPOTHESIS:
+# the only important weight change to consider is how much the expected delay
+# of the outgoing edge with the SMALLEST expected delay changes
 def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
     old_edge = None
     for e in node_data.edges:
@@ -51,24 +52,55 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
     # iterate over all entries in the table
     new_entries = []
     removed_entries = []
-    for entry in node_data.table.entries:
-
+    for entry in sorted(node_data.table.entries, key=lambda x: x.expected_time):
         if entry.parent == edge.to_node:
-
-            # already notify parents
-            # for parent_queue in node_data.parent_queues:
-            #     parent_queue.put(
-            #         NeighborUpdate(
-            #             entry.max_time, edge.expected_delay - old_edge.expected_delay
-            #         )
-            #     )
-
             removed_entries.append(entry)
             # update the entry
             new_entry = Entry(
                 entry.max_time,
                 edge.to_node,
                 entry.expected_time + (edge.expected_delay - old_edge.expected_delay),
+            )
+            new_entries.append(new_entry)
+
+
+
+    print(f"Node {node} old table {node_data.table}")
+    old_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    for entry in removed_entries:
+        node_data.table.entries.remove(entry)
+    for entry in new_entries:
+        node_data.table.entries.append(entry)
+    reduce_table(node_data.table)
+    print(f"Node {node} new table {node_data.table}")
+    new_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    # already notify parents
+    for parent_queue in node_data.parent_queues:
+        parent_queue.put(
+            NeighborUpdate(
+                node, new_smallest_expected_delay - old_smallest_expected_delay
+            )
+        )
+
+    return
+
+
+def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeData):
+    # find entry with smallest deadline >= update.deadline
+    new_entries = []
+    removed_entries = []
+    min_expected_time_to_neighbor = 999999999
+    first = True
+    for entry in sorted(node_data.table.entries, key=lambda x: x.expected_time):
+        if entry.parent == update.from_node:
+            if first:
+                first = False
+                min_expected_time_to_neighbor = entry.expected_time + update.difference
+                removed_entries.append(entry)
+            new_entry = Entry(
+                entry.max_time,
+                entry.parent,
+                max(min_expected_time_to_neighbor, entry.expected_time + update.difference),
             )
             new_entries.append(new_entry)
     print(f"Node {node} old table {node_data.table}")
@@ -82,22 +114,6 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
     return
 
 
-def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeData):
-    # find entry with smallest deadline >= update.deadline
-    for entry in node_data.table.entries:
-        if entry.parent in node_data.parent_queues:
-            if entry.max_time >= update.deadline:
-                # update the entry
-                new_entry = Entry(
-                    entry.max_time,
-                    entry.parent,
-                    entry.expected_time + update.difference,
-                )
-                node_data.table.entries.append(new_entry)
-    reduce_table(node_data.table)
-    return
-
-
 def node_loop(node: Node, node_data: NodeData, queue: Queue) -> None:
     while True:
         received: Edge | NeighborUpdate | None = queue.get()
@@ -107,6 +123,7 @@ def node_loop(node: Node, node_data: NodeData, queue: Queue) -> None:
             process_neighbor_update(node, received, node_data)
             continue
         elif isinstance(received, Edge):
+            print(f"Node {node} received edge change {received}")
             process_edge_change(node, received, node_data)
             continue
         elif received is None:
@@ -181,12 +198,14 @@ def main():
     current_graph = temporal_graph.at_time(0)
     for i in range(len(temporal_graph) - 1):
         time += 1
+        print(f"Time {time}")
         current_graph = temporal_graph.at_time(time)
         changed_edges = current_graph.edges() - temporal_graph.at_time(time - 1).edges()
         for edge in changed_edges:
             # only 1 edge is changed for now
             queues[edge.from_node].put(edge)
         sleep(1)
+        print(f"-------Time {time} done-------")
         pass
 
     # join all processes

@@ -35,22 +35,25 @@ def reduce_table(node_data: NodeData, keep_entries: bool = True):
         else:
             entry_count[entry.parent] = 1
 
-    for entry in table.entries:
-        for entry2 in table.entries:
-            if entry == entry2:
+    print(f"Entry count {entry_count}")
+
+    for i, entry in enumerate(table.entries):
+        for j, entry2 in enumerate(table.entries):
+            if i == j or entry.parent != entry2.parent:
                 continue
             if (
                 entry.expected_time <= entry2.expected_time
                 and entry.max_time <= entry2.max_time
             ):
+                # entry dominates entry2
                 if entry2 in new_table.entries:
                     if (
-                        not keep_entries or entry_count[entry.parent] > 1
+                        not keep_entries or entry_count[entry2.parent] > 1
                     ):  # or v == entry2.parent:
+                        print(f"Removing {entry2}")
                         new_table.entries.remove(entry2)
-                        entry_count[entry.parent] -= 1
-    table.entries = new_table.entries
-
+                        entry_count[entry2.parent] -= 1
+    table.entries = deepcopy(new_table.entries)
 
 # HYPOTHESIS:
 # the only important weight change to consider is how much the expected delay
@@ -84,6 +87,7 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
         node_data.table.entries.remove(entry)
     for entry in new_entries:
         node_data.table.entries.append(entry)
+    print(f"Node {node} unreduced table {node_data.table}")
     reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
     new_options = [(x.max_time, x.expected_time) for x in node_data.table.entries]

@@ -11,6 +11,11 @@ class Table:
         return len(self.entries)
 
     def __eq__(self, other):
+        if not isinstance(other, Table):
+            return False
+
+        if len(self.entries) != len(other.entries):
+            return False
         equal = True
         for entry in self.entries:
             if entry not in other.entries:
@@ -41,6 +46,7 @@ class Edge:
         return f"Edge {self.from_node} -({self.expected_delay}, {self.worst_case_delay})-> {self.to_node}"
 
     def __hash__(self):
+
         return hash((self.from_node, self.to_node, self.expected_delay, self.worst_case_delay))
 
 

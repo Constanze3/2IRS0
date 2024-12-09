@@ -1,8 +1,8 @@
 from copy import deepcopy
 import random
 from baruah_modified import original_baruah
-from btypes import Graph, Entry, Tables, Table, TemporalGraph, Node, Edge
-from typing import List, Dict
+from btypes import Graph, Entry, Table, TemporalGraph, Node, Edge
+from typing import List, Dict, Tuple
 from dataclasses import dataclass
 import multiprocessing as mp
 from time import sleep
@@ -14,8 +14,7 @@ NodeLabel = int | str
 class NeighborUpdate:
     from_node: Node
     # deadline: int
-    difference: int
-
+    differences: List[Tuple[int, int, int]]  # (max_time, difference, expected_time)
 
 
 @dataclass
@@ -45,10 +44,13 @@ def reduce_table(node_data: NodeData, keep_entries: bool = True):
                 and entry.max_time <= entry2.max_time
             ):
                 if entry2 in new_table.entries:
-                    if not keep_entries or entry_count[entry.parent] > 1: #or v == entry2.parent:
+                    if (
+                        not keep_entries or entry_count[entry.parent] > 1
+                    ):  # or v == entry2.parent:
                         new_table.entries.remove(entry2)
                         entry_count[entry.parent] -= 1
     table.entries = new_table.entries
+
 
 # HYPOTHESIS:
 # the only important weight change to consider is how much the expected delay
@@ -76,24 +78,29 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
             )
             new_entries.append(new_entry)
 
-
-
     print(f"Node {node} old table {node_data.table}")
-    old_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    old_options = [(x.max_time, x.expected_time) for x in node_data.table.entries]
     for entry in removed_entries:
         node_data.table.entries.remove(entry)
     for entry in new_entries:
         node_data.table.entries.append(entry)
     reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
-    new_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    new_options = [(x.max_time, x.expected_time) for x in node_data.table.entries]
+    differences = [
+        (new_options[i][0], new_options[i][1] - old_options[i][1], old_options[i][1])
+        for i in range(len(new_options))
+    ]
+    stable = True
+    for diff in differences:
+        if diff[1] != 0:
+            stable = False
+            break
+    if stable:
+        return
     # already notify parents
     for parent_queue in node_data.parent_queues:
-        parent_queue.put(
-            NeighborUpdate(
-                node, new_smallest_expected_delay - old_smallest_expected_delay
-            )
-        )
+        parent_queue.put(NeighborUpdate(node, differences))
 
     return
 
@@ -102,41 +109,61 @@ def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeD
     # find entry with smallest deadline >= update.deadline
     new_entries = []
     removed_entries = []
-    old_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
-    min_expected_time_to_neighbor = 999999999
-    first = True
+    edge = None
+    for e in node_data.edges:
+        if e.to_node == update.from_node:
+            edge = deepcopy(e)
+            break
+    if edge is None:
+        raise ValueError("Edge not found in node data")
     for entry in sorted(node_data.table.entries, key=lambda x: x.expected_time):
         if entry.parent == update.from_node:
-            if first:
-                first = False
-                min_expected_time_to_neighbor = entry.expected_time + update.difference
-                removed_entries.append(entry)
-            new_entry = Entry(
-                entry.max_time,
-                entry.parent,
-                max(min_expected_time_to_neighbor, entry.expected_time + update.difference),
-            )
-            new_entries.append(new_entry)
+            feasible = [
+                x
+                for x in update.differences
+                if x[0] <= entry.max_time + edge.worst_case_delay
+            ]
+            # there should always be at least one feasible
+            for diff in feasible:
+                new_entry = Entry(
+                    entry.max_time,
+                    entry.parent,
+                    edge.expected_delay + diff[2] + diff[1],
+                )
+                new_entries.append(new_entry)
+            removed_entries.append(entry)
+
     print(f"Node {node} old table {node_data.table}")
+    old_options = [(x.max_time, x.expected_time) for x in node_data.table.entries]
     for entry in removed_entries:
         node_data.table.entries.remove(entry)
     for entry in new_entries:
         node_data.table.entries.append(entry)
+    print(f"Node {node} unreduced table {node_data.table}")
     reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
-    new_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    new_options = [(x.max_time, x.expected_time) for x in node_data.table.entries]
+    differences = [
+        (new_options[i][0], new_options[i][1] - old_options[i][1], old_options[i][1])
+        for i in range(len(new_options))
+    ]
+    stable = True
+    for diff in differences:
+        if diff[1] != 0:
+            stable = False
+            break
+    if stable:
+        return
     # already notify parents
     for parent_queue in node_data.parent_queues:
-        parent_queue.put(
-            NeighborUpdate(
-                node, new_smallest_expected_delay - old_smallest_expected_delay
-            )
-        )
+        parent_queue.put(NeighborUpdate(node, differences))
 
     return
 
 
-def node_loop(node: Node, node_data: NodeData, queue: mp.Queue, return_queue: mp.Queue) -> None:
+def node_loop(
+    node: Node, node_data: NodeData, queue: mp.Queue, return_queue: mp.Queue
+) -> None:
     while True:
         received: Edge | NeighborUpdate | None = queue.get()
         if isinstance(received, NeighborUpdate):
@@ -171,9 +198,12 @@ def randomly_modify_graph(graph: Graph) -> Graph:
     )
     return new_graph
 
+
 TIME_BETWEEN_UPDATES = 0.1
-NUM_TIMES = 100
-SEED = 105
+NUM_TIMES = 20
+SEED = 106
+
+
 def main():
     baruah_paper_graph = Graph(
         {
@@ -221,7 +251,15 @@ def main():
             initial_tables[node],
         )
         node_tables[node] = initial_tables[node]
-        p = mp.Process(target=node_loop, args=(node, data, queues[node], return_queues[node],))
+        p = mp.Process(
+            target=node_loop,
+            args=(
+                node,
+                data,
+                queues[node],
+                return_queues[node],
+            ),
+        )
         processes[node] = p
         p.start()
 
@@ -233,11 +271,12 @@ def main():
         print(f"Time {time}")
         new_tables = original_baruah(temporal_graph.at_time(time), 4, True)
         current_graph = temporal_graph.at_time(time)
-        changed_edges = list(current_graph.edges() - temporal_graph.at_time(time - 1).edges())
+        changed_edges = list(
+            current_graph.edges() - temporal_graph.at_time(time - 1).edges()
+        )
         for edge in changed_edges:
             # only 1 edge is changed for now
             queues[edge.from_node].put(edge)
-
 
         sleep(TIME_BETWEEN_UPDATES)
         for i in current_graph.nodes():
@@ -253,14 +292,18 @@ def main():
                 print(f"Node {i} old table matches")
             else:
 
-                print(f"Node {i} old table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {old_tables[i]}")
+                print(
+                    f"Node {i} old table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {old_tables[i]}"
+                )
                 print(f"Graph at time {time}\n{temporal_graph.at_time(time - 1)}")
                 exit(1)
             node_tables[i] = new_table
             if node_tables[i] == new_tables[i]:
-                print(f"Node {i} new table matches")
+                print(f"Node {i} new table matches, {node_tables[i]} = {new_tables[i]}")
             else:
-                print(f"Node {i} new table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {new_tables[i]}")
+                print(
+                    f"Node {i} new table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {new_tables[i]}"
+                )
                 print(f"Graph at time {time}\n{temporal_graph.at_time(time)}")
                 exit(1)
 

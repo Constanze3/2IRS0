@@ -17,6 +17,7 @@ class NeighborUpdate:
     difference: int
 
 
+
 @dataclass
 class NodeData:
     parent_queues: List[mp.Queue]  # THESE ARE NODES WITH EDGES TO THIS NODE
@@ -101,6 +102,7 @@ def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeD
     # find entry with smallest deadline >= update.deadline
     new_entries = []
     removed_entries = []
+    old_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
     min_expected_time_to_neighbor = 999999999
     first = True
     for entry in sorted(node_data.table.entries, key=lambda x: x.expected_time):
@@ -122,6 +124,14 @@ def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeD
         node_data.table.entries.append(entry)
     reduce_table(node_data)
     print(f"Node {node} new table {node_data.table}")
+    new_smallest_expected_delay = min([x.expected_time for x in node_data.table.entries])
+    # already notify parents
+    for parent_queue in node_data.parent_queues:
+        parent_queue.put(
+            NeighborUpdate(
+                node, new_smallest_expected_delay - old_smallest_expected_delay
+            )
+        )
 
     return
 
@@ -134,7 +144,12 @@ def node_loop(node: Node, node_data: NodeData, queue: mp.Queue, return_queue: mp
             # process neighbor update
             process_neighbor_update(node, received, node_data)
         elif isinstance(received, Edge):
-            print(f"Node {node} received edge change {received}")
+            old_edge = None
+            for e in node_data.edges:
+                if e.from_node == received.from_node and e.to_node == received.to_node:
+                    old_edge = deepcopy(e)
+                    break
+            print(f"Node {node} received edge change from {old_edge} to {received}")
             process_edge_change(node, received, node_data)
         elif received is None:
             print(f"Node {node} exiting")
@@ -156,7 +171,9 @@ def randomly_modify_graph(graph: Graph) -> Graph:
     )
     return new_graph
 
-
+TIME_BETWEEN_UPDATES = 0.1
+NUM_TIMES = 100
+SEED = 105
 def main():
     baruah_paper_graph = Graph(
         {
@@ -175,8 +192,8 @@ def main():
     graph_list.append(baruah_paper_graph)
     graph_list.append(g2)
 
-    random.seed(105)
-    for i in range(10):
+    random.seed(SEED)
+    for i in range(NUM_TIMES - 1):
         graph_list.append(randomly_modify_graph(graph_list[-1]))
 
     temporal_graph = TemporalGraph(graph_list)
@@ -222,7 +239,7 @@ def main():
             queues[edge.from_node].put(edge)
 
 
-        sleep(1)
+        sleep(TIME_BETWEEN_UPDATES)
         for i in current_graph.nodes():
             new_table = Table()
 
@@ -235,17 +252,25 @@ def main():
             if node_tables[i] == old_tables[i]:
                 print(f"Node {i} old table matches")
             else:
+
                 print(f"Node {i} old table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {old_tables[i]}")
+                print(f"Graph at time {time}\n{temporal_graph.at_time(time - 1)}")
+                exit(1)
             node_tables[i] = new_table
             if node_tables[i] == new_tables[i]:
                 print(f"Node {i} new table matches")
             else:
                 print(f"Node {i} new table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {new_tables[i]}")
+                print(f"Graph at time {time}\n{temporal_graph.at_time(time)}")
+                exit(1)
 
         print("----Baruah's Answer----")
-        print(f"Old table {old_tables[changed_edges[0].from_node]}")
-        print(f"New table {new_tables[changed_edges[0].from_node]}")
-        print(f"-------Time {time} done-------")
+        if len(changed_edges) == 0:
+            print("No edge changes")
+        else:
+            print(f"Old table {old_tables[changed_edges[0].from_node]}")
+            print(f"New table {new_tables[changed_edges[0].from_node]}")
+            print(f"-------Time {time} done-------")
 
     # join all processes
     for i in temporal_graph.at_time(0).nodes():

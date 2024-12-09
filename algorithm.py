@@ -179,7 +179,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             new_tab_v.entries.remove(removed_entry)
         for added_entry in changes[v].added:
             insert_into_table(new_tab_v, graph, v, added_entry)
-        
+
         for u in graph.neighbor_of(v):
             if u in explored:
                 continue
@@ -192,6 +192,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             may_create = [True] * len(changes[v].added)
             dominates_some_feasible = [False] * len(changes[v].added)
 
+            # for every entry of the neighbor
             for entry_u in tab[u].entries:
                 # consider only entries that lead to v
                 if v != entry_u.parent:
@@ -207,6 +208,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
 
                 max_de_v = -math.inf
 
+                # check own entries
                 for entry_v in new_tab_v.entries:
                     d_v = entry_v.max_time
                     de_v = entry_v.expected_time
@@ -214,12 +216,16 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                     if d_min <= d_v and d_v <= d_max:
                         # entry is feasible
 
+                        # already added
                         if entry_v in changes[v].added:
                             index = changes[v].added.index(entry_v)
                             may_create[index] = False
 
+                        # one of the best
                         if de_v == min_de_v:
                             min_feasible_entries.append(entry_v)
+                        
+                        # new best
                         elif de_v < min_de_v:
                             min_de_v = de_v
                             min_feasible_entries.clear()
@@ -228,6 +234,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                         if max_de_v < de_v:
                             max_de_v = de_v
 
+                # get indices of entries better than best of the feasible ones
                 for (index, added_entry) in enumerate(changes[v].added):
                     if added_entry.expected_time < max_de_v:
                         dominates_some_feasible[index] = True
@@ -268,6 +275,7 @@ def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, Table
         output_differences[u] = difference(old_table, new_tables[u])
     return output_differences
 
+failing_tests = []
 def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], new_typical_delay: int):
     old_tables = original_baruah(graph, destination, True)
 
@@ -283,6 +291,8 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
 
     if actual_changes != expected_changes:
         print("FAIL")
+        global failing_tests
+        failing_tests.append(name)
         print()
 
         print("graph:")
@@ -420,3 +430,6 @@ def test_insert_into_table():
 
 if __name__ == "__main__":
     dense_test()
+
+    print("Failing tests:")
+    print(failing_tests)

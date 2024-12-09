@@ -10,6 +10,14 @@ class Table:
     def __len__(self):
         return len(self.entries)
 
+    def __eq__(self, other):
+        equal = True
+        for entry in self.entries:
+            if entry not in other.entries:
+                equal = False
+                break
+        return equal
+
 
 Node = int | str
 Tables = Dict[Node, Table]

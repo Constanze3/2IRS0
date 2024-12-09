@@ -2,9 +2,9 @@ from copy import deepcopy
 import random
 from baruah_modified import original_baruah
 from btypes import Graph, Entry, Tables, Table, TemporalGraph, Node, Edge
-from typing import List
+from typing import List, Dict
 from dataclasses import dataclass
-from multiprocessing import Process, Queue
+import multiprocessing as mp
 from time import sleep
 
 NodeLabel = int | str
@@ -19,14 +19,22 @@ class NeighborUpdate:
 
 @dataclass
 class NodeData:
-    parent_queues: List[Queue]  # THESE ARE NODES WITH EDGES TO THIS NODE
+    parent_queues: List[mp.Queue]  # THESE ARE NODES WITH EDGES TO THIS NODE
     edges: List[Edge]  # THESE ARE EDGES FROM THIS NODE
     table: Table
 
 
-def reduce_table(node_data: NodeData):
+def reduce_table(node_data: NodeData, keep_entries: bool = True):
     table = node_data.table
     new_table = deepcopy(table)
+
+    entry_count = {}
+    for entry in table.entries:
+        if entry.parent in entry_count:
+            entry_count[entry.parent] += 1
+        else:
+            entry_count[entry.parent] = 1
+
     for entry in table.entries:
         for entry2 in table.entries:
             if entry == entry2:
@@ -36,7 +44,9 @@ def reduce_table(node_data: NodeData):
                 and entry.max_time <= entry2.max_time
             ):
                 if entry2 in new_table.entries:
-                    new_table.entries.remove(entry2)
+                    if not keep_entries or entry_count[entry.parent] > 1: #or v == entry2.parent:
+                        new_table.entries.remove(entry2)
+                        entry_count[entry.parent] -= 1
     table.entries = new_table.entries
 
 # HYPOTHESIS:
@@ -46,7 +56,8 @@ def process_edge_change(node: Node, edge: Edge, node_data: NodeData):
     old_edge = None
     for e in node_data.edges:
         if e.from_node == edge.from_node and e.to_node == edge.to_node:
-            old_edge = e
+            old_edge = deepcopy(e)
+            e.expected_delay = edge.expected_delay
             break
     if old_edge is None:
         raise ValueError("Edge not found in node data")
@@ -115,21 +126,20 @@ def process_neighbor_update(node: Node, update: NeighborUpdate, node_data: NodeD
     return
 
 
-def node_loop(node: Node, node_data: NodeData, queue: Queue) -> None:
+def node_loop(node: Node, node_data: NodeData, queue: mp.Queue, return_queue: mp.Queue) -> None:
     while True:
         received: Edge | NeighborUpdate | None = queue.get()
         if isinstance(received, NeighborUpdate):
             print(f"Node {node} received neighbor update {received}")
             # process neighbor update
             process_neighbor_update(node, received, node_data)
-            continue
         elif isinstance(received, Edge):
             print(f"Node {node} received edge change {received}")
             process_edge_change(node, received, node_data)
-            continue
         elif received is None:
             print(f"Node {node} exiting")
             break
+        return_queue.put(node_data)
     return
 
 
@@ -157,7 +167,7 @@ def main():
         }
     )
 
-    initial_tables = original_baruah(baruah_paper_graph, 4, False)
+    initial_tables = original_baruah(baruah_paper_graph, 4, True)
 
     graph_list: List[Graph] = []
     g2 = deepcopy(baruah_paper_graph)
@@ -173,41 +183,69 @@ def main():
     print(temporal_graph)
     print(initial_tables)
 
-
     # start loop for all nodes
     # use multiprocessing to parallelize the loop
     queues = {}
-    for i in temporal_graph.at_time(0).nodes():
-        queues[i] = Queue()
+    return_queues = {}
+    node_tables: Dict[Node, Table] = {}
     processes = {}
-    for i in temporal_graph.at_time(0).nodes():
-        node = i
-        adjecent_queues = [
+    for node in temporal_graph.at_time(0).nodes():
+        manager = mp.Manager()
+        queues[node] = manager.Queue()
+        manager2 = mp.Manager()
+        return_queues[node] = manager2.Queue()
+    for node in temporal_graph.at_time(0).nodes():
+        adjacent_queues = [
             queues[j] for j in temporal_graph.at_time(0).neighbor_of(node)
         ]
         data = NodeData(
-            adjecent_queues,
+            adjacent_queues,
             temporal_graph.at_time(0).outgoing_edges(node),
             initial_tables[node],
         )
-        queues[node] = Queue()
-        p = Process(target=node_loop, args=(node, data, queues[node]))
+        node_tables[node] = initial_tables[node]
+        p = mp.Process(target=node_loop, args=(node, data, queues[node], return_queues[node],))
         processes[node] = p
         p.start()
 
     time = 0
     current_graph = temporal_graph.at_time(0)
     for i in range(len(temporal_graph) - 1):
+        old_tables = original_baruah(temporal_graph.at_time(time), 4, True)
         time += 1
         print(f"Time {time}")
+        new_tables = original_baruah(temporal_graph.at_time(time), 4, True)
         current_graph = temporal_graph.at_time(time)
-        changed_edges = current_graph.edges() - temporal_graph.at_time(time - 1).edges()
+        changed_edges = list(current_graph.edges() - temporal_graph.at_time(time - 1).edges())
         for edge in changed_edges:
             # only 1 edge is changed for now
             queues[edge.from_node].put(edge)
+
+
         sleep(1)
+        for i in current_graph.nodes():
+            new_table = Table()
+
+            try:
+                new_table: Table = return_queues[i].get_nowait().table
+            except:
+                # print(f"Node {i} did not change")
+                continue
+            # check it matches baruah_paper_graph
+            if node_tables[i] == old_tables[i]:
+                print(f"Node {i} old table matches")
+            else:
+                print(f"Node {i} old table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {old_tables[i]}")
+            node_tables[i] = new_table
+            if node_tables[i] == new_tables[i]:
+                print(f"Node {i} new table matches")
+            else:
+                print(f"Node {i} new table does not match!!!!!!!!!!!!!!!! {node_tables[i]} =/= {new_tables[i]}")
+
+        print("----Baruah's Answer----")
+        print(f"Old table {old_tables[changed_edges[0].from_node]}")
+        print(f"New table {new_tables[changed_edges[0].from_node]}")
         print(f"-------Time {time} done-------")
-        pass
 
     # join all processes
     for i in temporal_graph.at_time(0).nodes():

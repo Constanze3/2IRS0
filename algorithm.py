@@ -244,7 +244,7 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     print(f"--- {name} ---");
     print()
 
-    show_debug = True
+    show_debug = False
 
     if actual_changes != expected_changes:
         print("FAIL")
@@ -402,4 +402,5 @@ def single_test():
 
 
 if __name__ == "__main__":
+    dense_test()
     single_test()

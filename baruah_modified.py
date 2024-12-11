@@ -26,7 +26,7 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
     # initialization
     tab: Tables = {}
     for node in nodes:
-        tab[node] = Table(entries=[])
+        tab[node] = Table()
     tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0)])
 
     def relax(edge: Edge):
@@ -61,42 +61,11 @@ def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tabl
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
 
-            entry_count = {}
+            new_entry = Entry(d, v, de)
             if keep_entries:
-                for neighbor in graph.neighbors(u):
-                    entry_count[neighbor] = 0
-                    for entry2 in tab[u].entries:
-                        d_u = entry2.max_time
-                        p_u = entry2.parent
-                        de_u = entry2.expected_time
-                        if p_u == neighbor:
-                            entry_count[neighbor] += 1
-
-                # if there are no entries with v as the parent we insert v
-                if entry_count[v] == 0:
-                    tab[u].entries.append(Entry(max_time=d, parent=v, expected_time=de))
-                    return
-
-            insert = True
-
-            for entry in tab[u].entries:
-                d_u = entry.max_time
-                p_u = entry.parent
-                de_u = entry.expected_time
-                if d_u <= d and de_u <= de:
-                    # our new entry is dominated by an existing entry, it should not be inserted
-                    # -> there are no entries in the table that this entry dominates
-                    insert = False
-                    break
-                elif d_u >= d and de_u >= de:
-                    # existing entry is dominated by our new entry
-                    # -> our new entry is definitely in the table
-                    if not keep_entries or entry_count[p_u] > 1 or v == p_u:
-                        # we make sure that there is at least one entry with p_u
-                        tab[u].entries.remove(Entry(max_time=d_u, parent=p_u, expected_time=de_u))
-
-            if insert:
-                tab[u].entries.append(Entry(max_time=d, parent=v, expected_time=de))
+                tab[u].insert_ppd(new_entry)
+            else:
+                tab[u].insert(new_entry)
 
     for i in range(len(nodes) - 1):
         for edge in edges:

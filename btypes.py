@@ -1,19 +1,87 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Dict, Tuple, Mapping, Set
 
-@dataclass
 class Table:
-    entries: List[Entry] = field(default_factory=list)
+    entries: List[Entry]
+
+    def __init__(self, entries=None) -> None:
+        self.entries = entries or []
+
+    def __iter__(self):
+        return iter(self.entries)
 
     def __len__(self):
         return len(self.entries)
 
+    def __str__(self) -> str:
+        return str(self.entries)
+
+    def insert(self, entry: Entry) -> None:
+        """
+        Inserts the `entry` in the `table` with domination checks.
+        """
+
+        if entry.parent is None:
+            self.entries.append(entry)
+            return
+
+        should_insert = True
+        remove = []
+        for existing_entry in self.entries:
+            if existing_entry.max_time <= entry.max_time and existing_entry.expected_time <= entry.max_time:
+                # entry is dominated by an existing entry
+                should_insert = False
+                break
+
+            elif existing_entry.max_time >= entry.max_time and existing_entry.expected_time >= entry.expected_time:
+                # entry dominates existing entry
+                remove.append(existing_entry)
+        
+        for entry_to_remove in remove:
+            self.entries.remove(entry_to_remove)
+        
+        if should_insert:
+            self.entries.append(entry)
+
+    def insert_ppd(self, entry: Entry) -> None:
+        """
+        Inserts the `entry` in the `table` with per parent domination checks.
+        
+        If `entry` is not dominated by any entries that have the same parent it gets inserted and
+        all entries that have the same parent and are dominated by `entry` get removed.
+        """
+
+        if entry.parent is None:
+            self.entries.append(entry)
+            return
+
+        should_insert = True
+        remove = []
+        for existing_entry in self.entries:
+            if existing_entry.parent != entry.parent:
+                # only consider domination if existing entry has the same parent as entry
+                continue
+
+            if existing_entry.max_time <= entry.max_time and existing_entry.expected_time <= entry.expected_time:
+                # entry is dominated by existing entry
+                should_insert = False
+                break
+
+            if entry.max_time <= existing_entry.max_time and entry.expected_time <= existing_entry.expected_time:
+                # entry dominates existing entry
+                remove.append(existing_entry)
+
+        for entry_to_remove in remove:
+            self.entries.remove(entry_to_remove)
+        
+        if should_insert:
+            self.entries.append(entry)
+
 
 Node = int | str
 Tables = Dict[Node, Table]
-
 
 @dataclass
 class Edge:
@@ -55,7 +123,7 @@ class Entry:
         return hash((self.parent, self.max_time, self.expected_time))
     
     def __str__(self):
-        return f"Entry: {self.parent} {self.max_time} {self.expected_time}"
+        return f"Entry: {self.max_time} {self.parent} {self.expected_time}"
     
     def __repr__(self):
         return self.__str__()

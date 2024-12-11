@@ -6,8 +6,11 @@ import math
 
 class TableDiff:
     def __init__(self, removed: List[Entry], added: List[Entry]) -> None:
-       self.removed = removed
-       self.added = added
+        self.removed = removed
+        self.added = added
+
+        self.removed.sort()
+        self.added.sort()
     
     def __len__(self):
         return len(self.removed) + len(self.added)
@@ -20,6 +23,10 @@ class TableDiff:
     
     def __repr__(self):
         return self.__str__()
+
+    def __add__(self, other):
+        return TableDiff(self.removed + other.removed, self.added + other.added)
+
     
 def difference(old_table: Table, new_table: Table) -> TableDiff:
     """
@@ -84,50 +91,7 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
     
     return TableDiff(removed, added)
 
-def insert_into_table(table: Table, graph: Graph, node: Node, entry: Entry):
-    """
-    If the provided `entry` is not dominated by entries in the `table` of a `node` it inserts it into `table`
-    and removes all entries dominated by `entry`, but keeping at least one entry for each neighbor.
-    """
-
-    if entry.parent is None:
-        table.entries.append(entry)
-        return
-
-    entry_count = {}
-    for neighbor in graph.neighbors(node):
-        entry_count[neighbor] = 0
-    for existing_entry in table.entries:
-        if existing_entry.parent != None:
-            entry_count[existing_entry.parent] += 1
-
-    # if there is no entry for such neighbor it is definitely inserted
-    if entry_count[entry.parent] == 0:
-        table.entries.append(entry)
-        return
     
-    insert = True
-    remove = []
-    for existing_entry in table.entries:
-        if existing_entry.max_time <= entry.max_time and existing_entry.expected_time <= entry.max_time:
-            # entry is dominated by an existing entry
-            insert = False
-            break
-
-        if entry.max_time <= existing_entry.max_time and entry.expected_time <= existing_entry.expected_time:
-            # entry dominates existing entry
-            if 1 < entry_count[existing_entry.parent] or entry.parent == existing_entry.parent:
-                remove.append(existing_entry)
-    
-    for entry_to_remove in remove:
-        print(entry_count[entry_to_remove.parent])
-        print(entry_to_remove)
-        table.entries.remove(entry_to_remove)
-    
-    if insert:
-        table.entries.append(entry)
-
-
 def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value: int) -> Dict[Node, TableDiff]:
     e = graph.edge(*changed_edge)
     changes: Mapping[Node, TableDiff] = {}
@@ -146,31 +110,27 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
 
     # determine changes in the start node's table
     new_start_node_table = Table()
+    
+    if tab[e.to_node]:
+        d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
+        for other_entry in tab[e.to_node]:
+            d = max(d_min, value + other_entry.max_time)
+            de = other_entry.expected_time + value
 
-    for entry in tab[e.from_node].entries:
-        if entry.parent == e.to_node:
-            d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
+            new_entry = Entry(d, e.to_node, de)
+            new_start_node_table.insert_ppd(new_entry)
 
-            for other_entry in tab[e.to_node].entries:
-                d = max(d_min, value + other_entry.max_time)
-                de = other_entry.expected_time + value
+    for entry in tab[e.from_node]:
+        if entry.parent != e.to_node:
+            new_start_node_table.insert_ppd(deepcopy(entry))
 
-                new_entry = Entry(d, e.to_node, de)
-                insert_into_table(new_start_node_table, graph, start_node, new_entry)
-
-        else:
-            insert_into_table(new_start_node_table, graph, start_node, deepcopy(entry))
-
-    changes[start_node] = difference(tab[start_node], new_start_node_table)
+    changes[start_node] += difference(tab[start_node], new_start_node_table)
     
     # print(changes)
     # print()
 
     queue: List[Node] = []
     queue.append(start_node)
-
-    explored = []
-    explored.append(start_node)
 
     # nodes have access to their neighbor's:
     # tab[neighbor]
@@ -184,13 +144,9 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
         for removed_entry in changes[v].removed:
             new_tab_v.entries.remove(removed_entry)
         for added_entry in changes[v].added:
-            insert_into_table(new_tab_v, graph, v, added_entry)
+            new_tab_v.insert_ppd(added_entry)
         
         for u in graph.neighbor_of(v):
-            if u in explored:
-                continue
-
-            explored.append(u)
             new_tab_u = Table()
 
             edge = graph.edge(u, v)
@@ -201,7 +157,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             for entry_u in tab[u].entries:
                 # consider only entries that lead to v
                 if v != entry_u.parent:
-                    insert_into_table(new_tab_u, graph, u, entry_u)
+                    new_tab_u.insert_ppd(entry_u)
                     continue
 
                 # determine feasible entries with minimum typical time
@@ -242,7 +198,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 associated_entry = deepcopy(entry_u)
                 associated_entry.expected_time = min_feasible_entries[0].expected_time + edge.expected_delay
  
-                insert_into_table(new_tab_u, graph, u, associated_entry)
+                new_tab_u.insert_ppd(associated_entry)
 
             if not increment:
                 for (index, added_entry) in enumerate(changes[v].added):
@@ -252,10 +208,10 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                         de = edge.expected_delay + added_entry.expected_time
 
                         new_entry = Entry(d, v, de)
-                        insert_into_table(new_tab_u, graph, u, new_entry)
+                        new_tab_u.insert_ppd(new_entry)
             
             diff = difference(tab[u], new_tab_u)
-            changes[u] = diff
+            changes[u] += diff
 
             # print(changes)
             # print()
@@ -287,10 +243,16 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     print(f"--- {name} ---");
     print()
 
+    show_debug = False
+
     if actual_changes != expected_changes:
         print("FAIL")
-        print()
-
+        show_debug = True
+    else:
+        print("PASS")
+    print()
+    
+    if show_debug:
         print("graph:")
         print(graph)
         print()
@@ -299,13 +261,19 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
         print()
         
         print("where actual != expected:")
+        problem_exists = False
         for node, actual_change in actual_changes.items():
             if actual_change != expected_changes[node]:
+                problem_exists = True 
                 print("    actual:")
                 print("    " + str(actual_changes))
                 print("    expected:")
                 print("    " + str(expected_changes))
                 print()
+
+        if not problem_exists:
+            print("None")
+            print()
 
         print("old tables:")
         for node, table in old_tables.items():
@@ -316,9 +284,6 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
         for node, table in new_tables.items():
             print(f"{node}: {table}")
         print()
-    else:
-        print("PASS")
-    print()
 
 def dense_test():
     g1 = Graph({
@@ -395,35 +360,32 @@ def dense_test():
     test_algorithm("test22", g6, 4, (4, 1), 2)
     test_algorithm("test23", g6, 4, (4, 2), 8)
     
-def test_insert_into_table():
-    table = Table()
-    
-    graph = Graph({
-        1: { 2: (4, 20), 3: (5, 20) },
-        2: {},
-        3: {}
-    })
+def draw_graph(graph: Graph):
+    import networkx as nx
+    import matplotlib.pyplot as plt
 
-    e1 = Entry(10, 2, 19)
-    e2 = Entry(20, 2, 19)
-    e3 = Entry(12, 3, 19)
-    e4 = Entry(5, 3,  39)
+    nx_graph = nx.DiGraph()
 
-    insert_into_table(table, graph, 1, e1)
-    insert_into_table(table, graph, 1, e2)
-    insert_into_table(table, graph, 1, e3)
-    insert_into_table(table, graph, 1, e4)
+    for node in graph.nodes():
+        nx_graph.add_node(node)
 
-    expected = [e1, e3, e4]
-    expected.sort()
+    for edge in graph.edges():
+        nx_graph.add_edge(
+            edge.from_node, 
+            edge.to_node, 
+            expected_delay=edge.expected_delay, 
+            worst_case_delay=edge.worst_case_delay
+        )
 
-    actual = table.entries
-    actual.sort()
+    pos = nx.spring_layout(nx_graph)
 
-    print(expected)
-    print(actual)
+    colors = ["b"] * len(nx_graph.edges())
+    nx.draw_networkx(nx_graph, pos, with_labels=True, edge_color=colors)
+    nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=nx.get_edge_attributes(nx_graph, "expected_delay"), label_pos=0.3)
+    nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=nx.get_edge_attributes(nx_graph, "worst_case_delay"), font_color="red", label_pos=0.4)
 
-    assert(expected == actual)
+    plt.show()
+
 
 def single_test():
     g6 = Graph({
@@ -433,7 +395,11 @@ def single_test():
         4: {1: (5, 10), 2: (4, 9), 3: (3, 7)}
     })
     test_algorithm("test20", g6, 4, (3, 1), 1)
+    # draw_graph(g6)
+    
+    
+
 
 if __name__ == "__main__":
-    # dense_test()
-    single_test()
+    dense_test()
+    # single_test()

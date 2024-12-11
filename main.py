@@ -8,6 +8,7 @@ import json
 import copy
 import signal
 
+
 from btypes import Node, Edge
 from baruah import baruah
 from table import TKTable
@@ -99,9 +100,10 @@ def show_baruah_table(G, pos):
     G_for_baruah = {node: {key: (list(value.values())[0], list(value.values())[1]) for key, value in edge.items()} for node, edge in G.adjacency()}
     destinations = sorted(G_for_baruah.keys())
 
+    adj_list = adj_matrix_to_adj_list(graphs[time])
+
     for node in destinations:
         # table = build_routing_tables(G_for_baruah, node)
-        adj_list = adj_matrix_to_adj_list(graphs[time])
         # table = build_routing_tables(adj_list, node)
         table = baruah(adj_list, node, True)
         table_frame.grid_rowconfigure(node, weight=1)

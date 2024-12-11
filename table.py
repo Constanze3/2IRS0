@@ -21,7 +21,7 @@ class TKTable:
         e.insert(END, text)
         return e
     
-    def get_values(self):
+    def get_values(self, directed=False):
         values = []
         for n, row in enumerate(self.cells):
             current_row = [None] * (n + 1)
@@ -35,6 +35,10 @@ class TKTable:
                     value = None
                 current_row.append(value)
             values.append(current_row)
+        if not directed:
+            for i in range(len(values)):
+                for j in range(i + 1, len(values[i])):
+                    values[j][i] = values[i][j]
         return values
 
 

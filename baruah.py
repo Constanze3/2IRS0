@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Tuple, List, Dict, Set
+from typing import Any, Mapping, Tuple, List, Dict
 from random import shuffle
 
 Node = Any

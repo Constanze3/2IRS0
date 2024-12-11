@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import List
 from btypes import Graph, Node, Tables, Edge, Table, Entry, TemporalGraph
-from copy import deepcopy
 
 updated = []
-
-from random import shuffle
 
 def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     """

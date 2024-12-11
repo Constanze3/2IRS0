@@ -1,5 +1,5 @@
 from baruah_modified import original_baruah
-from btypes import Graph, Node, Edge, Entry, Tables, Table
+from btypes import Graph, Node, Entry, Tables, Table
 from typing import List, Mapping, Dict, Tuple, Set
 from copy import deepcopy
 import math

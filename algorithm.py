@@ -1,16 +1,13 @@
 from baruah_modified import original_baruah
 from btypes import Graph, Node, Edge, Entry, Tables, Table
-from typing import List, Mapping, Dict, Tuple
+from typing import List, Mapping, Dict, Tuple, Set
 from copy import deepcopy
 import math
 
 class TableDiff:
-    def __init__(self, removed: List[Entry], added: List[Entry]) -> None:
-        self.removed = removed
-        self.added = added
-
-        self.removed.sort()
-        self.added.sort()
+    def __init__(self, removed: Set[Entry] | None = None, added: Set[Entry] | None = None) -> None:
+        self.removed = removed or set()
+        self.added = added or set()
     
     def __len__(self):
         return len(self.removed) + len(self.added)
@@ -24,8 +21,8 @@ class TableDiff:
     def __repr__(self):
         return self.__str__()
 
-    def __add__(self, other):
-        return TableDiff(self.removed + other.removed, self.added + other.added)
+    def __ior__(self, other):
+        return TableDiff(self.removed | other.removed, self.added | other.added)
 
     
 def difference(old_table: Table, new_table: Table) -> TableDiff:
@@ -40,9 +37,9 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
     new_entries = sorted(new_table.entries)
 
     # entries in old table that were removed to get to the new table
-    removed = []
+    removed: Set[Entry] = set()
     # entries in new table that were an addition to the entries of old table
-    added = []
+    added: Set[Entry] = set()
 
     index_old = 0
     index_new = 0
@@ -55,14 +52,14 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
         if len(old_entries) <= index_old:
             entry_new = new_entries[index_new]
             # entry_new only exists in the new table -> it was added
-            added.append(entry_new)
+            added.add(entry_new)
             index_new += 1
             continue
 
         if len(new_entries) <= index_new:
             entry_old = old_entries[index_old]
             # entry_old only exist in the old table -> it was removed
-            removed.append(entry_old)
+            removed.add(entry_old)
             index_old += 1
             continue
         
@@ -79,13 +76,13 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
 
         if entry_old < entry_new:
             # entry_old was "skipped over" in new table, the table is sorted -> the new table doesn't contain it -> it was removed
-            removed.append(entry_old)
+            removed.add(entry_old)
             index_old += 1
             continue
         
         if entry_new < entry_old:
             # entry_new was "skipped over" in old table, the table is sorted -> the old table doesn't contain it -> it was added
-            added.append(entry_new)
+            added.add(entry_new)
             index_new += 1
             continue
     
@@ -97,7 +94,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
     changes: Mapping[Node, TableDiff] = {}
 
     for node in graph.nodes():
-        changes[node] = TableDiff([], [])
+        changes[node] = TableDiff()
 
     start_node = e.from_node
     edge_change = value - e.expected_delay
@@ -124,7 +121,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
         if entry.parent != e.to_node:
             new_start_node_table.insert_ppd(deepcopy(entry))
 
-    changes[start_node] += difference(tab[start_node], new_start_node_table)
+    changes[start_node] |= difference(tab[start_node], new_start_node_table)
     
     # print(changes)
     # print()
@@ -176,9 +173,9 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                     if d_min <= d_v and d_v <= d_max:
                         # entry is feasible
 
-                        if entry_v in changes[v].added:
-                            index = changes[v].added.index(entry_v)
-                            may_create[index] = False
+                        # if entry_v in changes[v].added:
+                        #     index = changes[v].added.index(entry_v)
+                        #     may_create[index] = False
 
                         if de_v == min_de_v:
                             min_feasible_entries.append(entry_v)
@@ -211,7 +208,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                         new_tab_u.insert_ppd(new_entry)
             
             diff = difference(tab[u], new_tab_u)
-            changes[u] += diff
+            changes[u] |= diff
 
             # print(changes)
             # print()

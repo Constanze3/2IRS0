@@ -117,14 +117,11 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             new_entry = Entry(d, e.to_node, de)
             new_start_node_table.insert_ppd(new_entry)
 
-    for entry in tab[e.from_node]:
-        if entry.parent != e.to_node:
-            new_start_node_table.insert_ppd(deepcopy(entry))
+    for added_entry in tab[e.from_node]:
+        if added_entry.parent != e.to_node:
+            new_start_node_table.insert_ppd(deepcopy(added_entry))
 
     changes[start_node] |= difference(tab[start_node], new_start_node_table)
-    
-    # print(changes)
-    # print()
 
     queue: List[Node] = []
     queue.append(start_node)
@@ -135,7 +132,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
 
     while queue:
         v = queue.pop(0)
-
+        
         # reconstruct the new table of v from the changes
         new_tab_v = deepcopy(tab[v])
         for removed_entry in changes[v].removed:
@@ -144,12 +141,21 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             new_tab_v.insert_ppd(added_entry)
         
         for u in graph.neighbor_of(v):
-            new_tab_u = Table()
-
             edge = graph.edge(u, v)
 
-            may_create = [True] * len(changes[v].added)
-            dominates_some_feasible = [False] * len(changes[v].added)
+            new_tab_u = Table()
+
+            # entries in changes[v].added may lead to the creation of a new entry in u
+            # if both of the following conditions are satisfied
+            
+            # the entry is not feasible for any entry in u
+            create_cond1: Dict[Entry, bool] = {}
+            # the entry has better expected time than some feasible entry
+            create_cond2: Dict[Entry, bool] = {}
+
+            for added_entry in changes[v].added:
+                create_cond1[added_entry] = True
+                create_cond2[added_entry] = False
 
             for entry_u in tab[u].entries:
                 # consider only entries that lead to v
@@ -173,9 +179,8 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                     if d_min <= d_v and d_v <= d_max:
                         # entry is feasible
 
-                        # if entry_v in changes[v].added:
-                        #     index = changes[v].added.index(entry_v)
-                        #     may_create[index] = False
+                        if entry_v in changes[v].added:
+                            create_cond1[entry_v] = False
 
                         if de_v == min_de_v:
                             min_feasible_entries.append(entry_v)
@@ -186,34 +191,33 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
 
                         if max_de_v < de_v:
                             max_de_v = de_v
-
-                for (index, added_entry) in enumerate(changes[v].added):
+                
+                for added_entry in changes[v].added:
                     if added_entry.expected_time < max_de_v:
-                        dominates_some_feasible[index] = True
+                        create_cond2[added_entry] = True
                     
                 # define associated entry in u
                 associated_entry = deepcopy(entry_u)
                 associated_entry.expected_time = min_feasible_entries[0].expected_time + edge.expected_delay
  
                 new_tab_u.insert_ppd(associated_entry)
-
-            # if not increment:
-            #     for (index, added_entry) in enumerate(changes[v].added):
-            #         if may_create[index] and dominates_some_feasible[index]:
-            #             d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
-            #             d = max(d_min, edge.expected_delay + added_entry.max_time)
-            #             de = edge.expected_delay + added_entry.expected_time
-
-            #             new_entry = Entry(d, v, de)
-            #             new_tab_u.insert_ppd(new_entry)
             
+            # create
+            if new_tab_v.entries: 
+                d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
+                for added_entry in changes[v].added:
+                    if create_cond1[added_entry] and create_cond2[added_entry]:
+                        d = max(d_min, edge.expected_delay + added_entry.max_time)
+                        de = edge.expected_delay + added_entry.expected_time
+
+                        new_entry = Entry(d, v, de)
+                        new_tab_u.insert_ppd(new_entry)
+
             diff = difference(tab[u], new_tab_u)
+            changes_before = deepcopy(changes[u])
             changes[u] |= diff
 
-            # print(changes)
-            # print()
-            
-            if len(diff) > 0:
+            if changes_before != changes[u]:
                 queue.append(u)
 
     return changes

@@ -147,16 +147,22 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
     # determine changes in the start node's table
     new_start_node_table = Table()
 
-    for entry in tab[start_node].entries:
+    for entry in tab[e.from_node].entries:
         if entry.parent == e.to_node:
-            new_entry: Entry = deepcopy(entry)
-            new_entry.expected_time += edge_change
-            insert_into_table(new_start_node_table, graph, start_node, new_entry)
+            d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
+
+            for other_entry in tab[e.to_node].entries:
+                d = max(d_min, value + other_entry.max_time)
+                de = other_entry.expected_time + value
+
+                new_entry = Entry(d, e.to_node, de)
+                insert_into_table(new_start_node_table, graph, start_node, new_entry)
+
         else:
-            insert_into_table(new_start_node_table, graph, start_node, entry)
+            insert_into_table(new_start_node_table, graph, start_node, deepcopy(entry))
 
     changes[start_node] = difference(tab[start_node], new_start_node_table)
-
+    
     # print(changes)
     # print()
 
@@ -251,8 +257,8 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             diff = difference(tab[u], new_tab_u)
             changes[u] = diff
 
-            print(changes)
-            print()
+            # print(changes)
+            # print()
             
             if len(diff) > 0:
                 queue.append(u)
@@ -378,6 +384,8 @@ def dense_test():
         3: {1: (4, 8), 2: (2, 6), 4: (3, 7)},
         4: {1: (5, 10), 2: (4, 9), 3: (3, 7)}
     })
+    test_algorithm("test20", g6, 4, (3, 1), 1)
+
 
     test_algorithm("test17", g6, 4, (1, 4), 7)
     test_algorithm("test18", g6, 4, (2, 4), 8)
@@ -417,6 +425,15 @@ def test_insert_into_table():
 
     assert(expected == actual)
 
+def single_test():
+    g6 = Graph({
+        1: {2: (3, 7), 3: (4, 8), 4: (5, 10)},
+        2: {1: (3, 7), 3: (2, 6), 4: (4, 9)},
+        3: {1: (4, 8), 2: (2, 6), 4: (3, 7)},
+        4: {1: (5, 10), 2: (4, 9), 3: (3, 7)}
+    })
+    test_algorithm("test20", g6, 4, (3, 1), 1)
 
 if __name__ == "__main__":
-    dense_test()
+    # dense_test()
+    single_test()

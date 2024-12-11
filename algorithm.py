@@ -197,15 +197,15 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
  
                 new_tab_u.insert_ppd(associated_entry)
 
-            if not increment:
-                for (index, added_entry) in enumerate(changes[v].added):
-                    if may_create[index] and dominates_some_feasible[index]:
-                        d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
-                        d = max(d_min, edge.expected_delay + added_entry.max_time)
-                        de = edge.expected_delay + added_entry.expected_time
+            # if not increment:
+            #     for (index, added_entry) in enumerate(changes[v].added):
+            #         if may_create[index] and dominates_some_feasible[index]:
+            #             d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
+            #             d = max(d_min, edge.expected_delay + added_entry.max_time)
+            #             de = edge.expected_delay + added_entry.expected_time
 
-                        new_entry = Entry(d, v, de)
-                        new_tab_u.insert_ppd(new_entry)
+            #             new_entry = Entry(d, v, de)
+            #             new_tab_u.insert_ppd(new_entry)
             
             diff = difference(tab[u], new_tab_u)
             changes[u] |= diff

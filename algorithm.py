@@ -244,7 +244,7 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     print(f"--- {name} ---");
     print()
 
-    show_debug = False
+    show_debug = True
 
     if actual_changes != expected_changes:
         print("FAIL")
@@ -389,18 +389,17 @@ def draw_graph(graph: Graph):
 
 
 def single_test():
-    g6 = Graph({
-        1: {2: (3, 7), 3: (4, 8), 4: (5, 10)},
-        2: {1: (3, 7), 3: (2, 6), 4: (4, 9)},
-        3: {1: (4, 8), 2: (2, 6), 4: (3, 7)},
-        4: {1: (5, 10), 2: (4, 9), 3: (3, 7)}
+    g = Graph({
+        1: {2: (2, 5)},
+        2: {3: (3, 12), 4: (7, 12)},
+        3: {4: (4, 12)},
+        4: {}
     })
-    test_algorithm("test20", g6, 4, (3, 1), 1)
-    # draw_graph(g6)
+    test_algorithm("single test", g, 4, (3, 4), 3)
+    # draw_graph(g)
     
     
 
 
 if __name__ == "__main__":
-    dense_test()
-    # single_test()
+    single_test()

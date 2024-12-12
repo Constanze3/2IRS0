@@ -403,27 +403,27 @@ def random_test(num_tests=20, min_nodes=5, max_nodes=15, max_delay=20):
     def random_delay():
         typical = random.randint(0, max_delay)
         return (typical, random.randint(typical, max_delay))
+    
     for x in range(num_tests):
         nodes = [x for x in range(random.randint(min_nodes, max_nodes))] # create the nodes
         graph = dict((x, {y: random_delay()}) for x, y in zip(nodes, nodes[1:])) # turn it into a dictionary
         n = len(nodes) # get the number of nodes
-        graph[n-1] = {} # the last edge does not go anywhere afterwards
+        biggest_node = n - 1
+        graph[biggest_node] = {} # the last edge does not go anywhere afterwards
 
-        for x in range(random.randint(0, n*(n-1))): # create a random number of edges. n(n-1) is the maximum number of edges
-            from_node = random.randint(0, n-1)
-            to_node = random.randint(0, n-1)
+        for x in range(random.randint(0, n*(biggest_node))): # create a random number of edges. n(n-1) is the maximum number of edges
+            from_node = random.randint(0, biggest_node)
+            to_node = random.randint(0, biggest_node)
             while to_node == from_node: # makes sure that the to node and the from node are not the same
-                to_node = random.randint(0, n-1)
+                to_node = random.randint(0, biggest_node)
             graph[from_node][to_node] = random_delay() # currently has an issue of accidentally overriding previous edges. But oh well.
 
         g = Graph(graph)
-        from_node = random.randint(0,n-1) # select a random node
+        from_node = random.randint(0,biggest_node) # select a random node
         while len(graph[from_node].keys()) == 0: # make sure that the node has out going edges. (might not always be the case that the node has outgoing edges)
-            from_node = random.randint(0,n-1) # select a random node
+            from_node = random.randint(0,biggest_node) # select a random node
         to_node = random.choice(list(graph[from_node].keys())) # select one of its edges
-        test_algorithm("test", g, n-1, (from_node, to_node), random.randint(0, max_delay))
-
-
+        test_algorithm("test", g, biggest_node, (from_node, to_node), random.randint(0, max_delay))
 
 if __name__ == "__main__":
     random_test()

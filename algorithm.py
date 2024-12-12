@@ -161,11 +161,11 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             # the entry has better expected time than some feasible entry
             create_cond2: Dict[Entry, bool] = {}
 
-            for added_entry in changes[v].added:
-                create_cond1[added_entry] = True
-                create_cond2[added_entry] = False
+            for entry_v in new_tab_v:
+                create_cond1[entry_v] = True
+                create_cond2[entry_v] = False
 
-            for entry_u in tab[u].entries:
+            for entry_u in tab[u]:
                 # consider only entries that lead to v
                 if v != entry_u.parent:
                     new_tab_u.insert_ppd(entry_u)
@@ -177,7 +177,6 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 
                 min_de_v = math.inf
                 min_feasible_entries: List[Entry] = []
-
                 max_de_v = -math.inf
 
                 for entry_v in new_tab_v.entries:
@@ -187,8 +186,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                     if d_min <= d_v and d_v <= d_max:
                         # entry is feasible
 
-                        if entry_v in changes[v].added:
-                            create_cond1[entry_v] = False
+                        create_cond1[entry_v] = False
 
                         if de_v == min_de_v:
                             min_feasible_entries.append(entry_v)
@@ -200,9 +198,9 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                         if max_de_v < de_v:
                             max_de_v = de_v
                 
-                for added_entry in changes[v].added:
-                    if added_entry.expected_time < max_de_v:
-                        create_cond2[added_entry] = True
+                for entry_v in new_tab_v:
+                    if entry_v.expected_time < max_de_v:
+                        create_cond2[entry_v] = True
 
                 if not min_feasible_entries:
                     continue
@@ -216,10 +214,10 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             # create
             if new_tab_v.entries: 
                 d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
-                for added_entry in changes[v].added:
-                    if create_cond1[added_entry] and create_cond2[added_entry]:
-                        d = max(d_min, edge.expected_delay + added_entry.max_time)
-                        de = edge.expected_delay + added_entry.expected_time
+                for entry_v in new_tab_v:
+                    if create_cond1[entry_v] and create_cond2[entry_v]:
+                        d = max(d_min, edge.expected_delay + entry_v.max_time)
+                        de = edge.expected_delay + entry_v.expected_time
 
                         new_entry = Entry(d, v, de)
                         new_tab_u.insert_ppd(new_entry)
@@ -450,8 +448,8 @@ def random_test(num_tests=1000, min_nodes=2, max_nodes=15, max_delay=20):
 
 def atest():
     g = Graph({
-        0: { 1: (0, 17), 2: (4, 6) },
-        1: { 2: (7, 12), 0: (1, 16) },
+        0: { 1: (20, 20), 2: (4, 15) },
+        1: { 2: (6, 16), 0: (3, 14) },
         2: {}
     })
     
@@ -461,12 +459,11 @@ def atest():
 
     # print()
     # print()
-
-    test_algorithm("atest", g, 2, (0, 1), 0)
+    test_algorithm("atest", g, 2, (1, 2), 8)
 
 if __name__ == "__main__":
     # atest()
-    random_test(num_tests=100, max_nodes=4)
+    random_test(num_tests=100000, max_nodes=4)
     # dense_test()
     # single_test()
 

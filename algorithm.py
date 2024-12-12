@@ -448,7 +448,24 @@ def random_test(num_tests=1000, min_nodes=2, max_nodes=15, max_delay=20):
 
     print(f"{num_pass} passed out of {num_tests}")
 
+def atest():
+    g = Graph({
+        0: { 1: (0, 17), 2: (4, 6) },
+        1: { 2: (7, 12), 0: (1, 16) },
+        2: {}
+    })
+    
+    # for node, table in original_baruah(g, 2, True).items():
+    #     print(f"table of {node} is:")
+    #     print(table)
+
+    # print()
+    # print()
+
+    test_algorithm("atest", g, 2, (0, 1), 0)
+
 if __name__ == "__main__":
+    # atest()
     random_test(num_tests=100, max_nodes=4)
     # dense_test()
     # single_test()

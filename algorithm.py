@@ -399,14 +399,14 @@ def single_test():
     test_algorithm("single test", g, 4, (3, 4), 3)
     # draw_graph(g)
 
-def random_test(num_tests=20, min_nodes=5, max_nodes=15, max_delay=20):
+def random_test(num_tests=100, min_nodes=5, max_nodes=15, max_delay=20):
     def random_delay():
-        typical = random.randint(0, max_delay)
+        typical = random.randint(1, max_delay)
         return (typical, random.randint(typical, max_delay))
-    
-    for x in range(num_tests):
+
+    for i in range(num_tests):
         nodes = [x for x in range(random.randint(min_nodes, max_nodes))] # create the nodes
-        graph = dict((x, {y: random_delay()}) for x, y in zip(nodes, nodes[1:])) # turn it into a dictionary
+        graph = dict((x, {y: random_delay()}) for x, y in zip(nodes, nodes[1:])) # turn the path into a dictionary
         n = len(nodes) # get the number of nodes
         biggest_node = n - 1
         graph[biggest_node] = {} # the last edge does not go anywhere afterwards
@@ -423,7 +423,9 @@ def random_test(num_tests=20, min_nodes=5, max_nodes=15, max_delay=20):
         while len(graph[from_node].keys()) == 0: # make sure that the node has out going edges. (might not always be the case that the node has outgoing edges)
             from_node = random.randint(0,biggest_node) # select a random node
         to_node = random.choice(list(graph[from_node].keys())) # select one of its edges
-        test_algorithm("test", g, biggest_node, (from_node, to_node), random.randint(0, max_delay))
+        edge = g.edge(from_node, to_node)
+        new_delay = random.randint(1, edge.worst_case_delay)
+        test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), new_delay)
 
 if __name__ == "__main__":
     random_test()

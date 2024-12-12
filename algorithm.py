@@ -104,10 +104,17 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
     if edge_change == 0:
         return changes
 
-    increment = edge_change > 0
-
     # determine changes in the start node's table
     new_start_node_table = Table()
+    
+    # is the change on a possible path
+    on_path = False
+    for entry in tab[e.from_node]:
+        if entry.parent == e.to_node:
+            on_path = True
+
+    if not on_path:
+        return changes
     
     if tab[e.to_node]:
         d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
@@ -235,7 +242,7 @@ def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, Table
         output_differences[u] = difference(old_table, new_tables[u])
     return output_differences
 
-def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], new_typical_delay: int):
+def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], new_typical_delay: int) -> bool:
     old_tables = original_baruah(graph, destination, True)
 
     actual_changes = algorithm(graph, old_tables, edge, new_typical_delay)
@@ -249,10 +256,12 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     print()
 
     show_debug = False
+    passing = True
 
     if actual_changes != expected_changes:
         print("FAIL")
         show_debug = True
+        passing = False
     else:
         print("PASS")
     print()
@@ -289,6 +298,10 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
         for node, table in new_tables.items():
             print(f"{node}: {table}")
         print()
+
+    return passing
+
+    
 
 def dense_test():
     g1 = Graph({
@@ -402,10 +415,12 @@ def single_test():
     test_algorithm("single test", g, 4, (3, 4), 3)
     # draw_graph(g)
 
-def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
+def random_test(num_tests=1000, min_nodes=2, max_nodes=15, max_delay=20):
     def random_delay():
-        typical = random.randint(1, max_delay-1)
-        return (typical, random.randint(typical + 1, max_delay))
+        typical = random.randint(0, max_delay)
+        return (typical, random.randint(typical, max_delay))
+
+    num_pass = 0
 
     for i in range(num_tests):
         nodes = [x for x in range(random.randint(min_nodes, max_nodes))] # create the nodes
@@ -427,24 +442,27 @@ def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
             from_node = random.randint(0,biggest_node) # select a random node
         to_node = random.choice(list(graph[from_node].keys())) # select one of its edges
         edge = g.edge(from_node, to_node)
-        new_delay = random.randint(1, edge.worst_case_delay)
-        test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), new_delay)
+        new_delay = random.randint(0, edge.worst_case_delay)
+        if test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), new_delay):
+            num_pass += 1
+
+    print(f"{num_pass} passed out of {num_tests}")
 
 if __name__ == "__main__":
-    # random_test()
+    random_test(num_tests=100, max_nodes=4)
     # dense_test()
     # single_test()
 
-    g = Graph({
-        0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
-        1: {2: (15, 16), 0: (9, 18), 3: (6, 7)}, 
-        2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
-        3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
-        4: {5: (13, 14), 3: (17, 18), 1: (19, 20)}, 
-        5: {0: (4, 12)}
-    })
-    draw_graph(g)
-    test_algorithm("test", g, 5, (1, 3), 4)
+    # g = Graph({
+    #     0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
+    #     1: {2: (15, 16), 0: (9, 18), 3: (6, 7)}, 
+    #     2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
+    #     3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
+    #     4: {5: (13, 14), 3: (17, 18), 1: (19, 20)}, 
+    #     5: {0: (4, 12)}
+    # })
+    # draw_graph(g)
+    # test_algorithm("test", g, 5, (1, 3), 4)
 
 
 

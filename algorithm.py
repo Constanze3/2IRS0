@@ -411,7 +411,7 @@ def random_test(num_tests=20, min_nodes=5, max_nodes=15, max_delay=20):
         biggest_node = n - 1
         graph[biggest_node] = {} # the last edge does not go anywhere afterwards
 
-        for x in range(random.randint(0, n*(biggest_node))): # create a random number of edges. n(n-1) is the maximum number of edges
+        for x in range(random.randint(0, n*(n-1))): # create a random number of edges. n(n-1) is the maximum number of edges
             from_node = random.randint(0, biggest_node)
             to_node = random.randint(0, biggest_node)
             while to_node == from_node: # makes sure that the to node and the from node are not the same

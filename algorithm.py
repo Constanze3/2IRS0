@@ -399,10 +399,10 @@ def single_test():
     test_algorithm("single test", g, 4, (3, 4), 3)
     # draw_graph(g)
 
-def random_test(num_tests=100, min_nodes=5, max_nodes=15, max_delay=20):
+def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
     def random_delay():
-        typical = random.randint(1, max_delay)
-        return (typical, random.randint(typical, max_delay))
+        typical = random.randint(1, max_delay-1)
+        return (typical, random.randint(typical + 1, max_delay))
 
     for i in range(num_tests):
         nodes = [x for x in range(random.randint(min_nodes, max_nodes))] # create the nodes
@@ -429,5 +429,15 @@ def random_test(num_tests=100, min_nodes=5, max_nodes=15, max_delay=20):
 
 if __name__ == "__main__":
     random_test()
+    # g = Graph({
+    #     0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
+    #     1: {2: (15, 16), 0: (9, 18), 3: (6, 7)}, 
+    #     2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
+    #     3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
+    #     4: {5: (13, 14), 3: (17, 18), 1: (19, 20)}, 
+    #     5: {0: (4, 12)}
+    # })
+    # draw_graph(g)
+    # test_algorithm("test", g, 5, (1, 3), 4)
     # dense_test()
     # single_test()

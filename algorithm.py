@@ -402,10 +402,10 @@ def single_test():
     test_algorithm("single test", g, 4, (3, 4), 3)
     # draw_graph(g)
 
-def random_test(num_tests=100, min_nodes=5, max_nodes=15, max_delay=20):
+def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
     def random_delay():
-        typical = random.randint(1, max_delay)
-        return (typical, random.randint(typical, max_delay))
+        typical = random.randint(1, max_delay-1)
+        return (typical, random.randint(typical + 1, max_delay))
 
     for i in range(num_tests):
         nodes = [x for x in range(random.randint(min_nodes, max_nodes))] # create the nodes

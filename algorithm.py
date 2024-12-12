@@ -196,6 +196,9 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 for added_entry in changes[v].added:
                     if added_entry.expected_time < max_de_v:
                         create_cond2[added_entry] = True
+
+                if not min_feasible_entries:
+                    continue
                     
                 # define associated entry in u
                 associated_entry = deepcopy(entry_u)
@@ -428,6 +431,20 @@ def random_test(num_tests=100, min_nodes=5, max_nodes=15, max_delay=20):
         test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), new_delay)
 
 if __name__ == "__main__":
-    random_test()
+    # random_test()
     # dense_test()
     # single_test()
+
+    g = Graph({
+        0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
+        1: {2: (15, 16), 0: (9, 18), 3: (6, 7)}, 
+        2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
+        3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
+        4: {5: (13, 14), 3: (17, 18), 1: (19, 20)}, 
+        5: {0: (4, 12)}
+    })
+    draw_graph(g)
+    test_algorithm("test", g, 5, (1, 3), 4)
+
+
+

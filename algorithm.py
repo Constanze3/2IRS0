@@ -89,20 +89,38 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
     
     return TableDiff(removed, added)
 
+class Change:
+    data: Dict[Node, TableDiff]
+
+    def __init__(self) -> None:
+        self.data = {}
+
+    def insert(self, origin: Node, diff: TableDiff) -> None:
+        self.data[origin] = diff
+
+    def as_TableDiff(self):
+        result = TableDiff()
+        for diff in self.data.values():
+            result |= diff 
+        return result
     
 def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value: int) -> Dict[Node, TableDiff]:
+    graph = deepcopy(graph)
+
     e = graph.edge(*changed_edge)
-    changes: Mapping[Node, TableDiff] = {}
+    changes: Mapping[Node, Change] = {}
 
     for node in graph.nodes():
-        changes[node] = TableDiff()
+        changes[node] = Change()
 
     start_node = e.from_node
     edge_change = value - e.expected_delay
 
+    graph.modify_edge(*changed_edge, (value, graph.edge(*changed_edge).worst_case_delay))
+
     # no change
     if edge_change == 0:
-        return changes
+        return {node: change.as_TableDiff() for node, change in changes.items()}
 
     # determine changes in the start node's table
     new_start_node_table = Table()
@@ -114,7 +132,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             on_path = True
 
     if not on_path:
-        return changes
+        return {node: change.as_TableDiff() for node, change in changes.items()}
     
     if tab[e.to_node]:
         d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
@@ -129,7 +147,10 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
         if added_entry.parent != e.to_node:
             new_start_node_table.insert_ppd(deepcopy(added_entry))
 
-    changes[start_node] |= difference(tab[start_node], new_start_node_table)
+    changes[start_node].insert(e.to_node, difference(tab[start_node], new_start_node_table))
+
+    # print(changes[start_node].as_TableDiff())
+    # print({node: change.as_TableDiff() for node, change in changes.items()})
 
     queue: List[Node] = []
     queue.append(start_node)
@@ -143,10 +164,12 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
         
         # reconstruct the new table of v from the changes
         new_tab_v = deepcopy(tab[v])
-        for removed_entry in changes[v].removed:
+        for removed_entry in changes[v].as_TableDiff().removed:
             new_tab_v.entries.remove(removed_entry)
-        for added_entry in changes[v].added:
+        for added_entry in changes[v].as_TableDiff().added:
             new_tab_v.insert_ppd(added_entry)
+
+        # print(new_tab_v)
         
         for u in graph.neighbor_of(v):
             edge = graph.edge(u, v)
@@ -179,7 +202,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 min_feasible_entries: List[Entry] = []
                 max_de_v = -math.inf
 
-                for entry_v in new_tab_v.entries:
+                for entry_v in new_tab_v:
                     d_v = entry_v.max_time
                     de_v = entry_v.expected_time
 
@@ -212,7 +235,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 new_tab_u.insert_ppd(associated_entry)
             
             # create
-            if new_tab_v.entries: 
+            if new_tab_v: 
                 d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
                 for entry_v in new_tab_v:
                     if create_cond1[entry_v] and create_cond2[entry_v]:
@@ -223,13 +246,14 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                         new_tab_u.insert_ppd(new_entry)
 
             diff = difference(tab[u], new_tab_u)
-            changes_before = deepcopy(changes[u])
-            changes[u] |= diff
+            changes_before = changes[u].as_TableDiff()
+            changes[u].insert(v, diff)
 
-            if changes_before != changes[u]:
+            if changes_before != changes[u].as_TableDiff():
                 queue.append(u)
 
-    return changes
+    return {node: change.as_TableDiff() for node, change in changes.items()}
+
 
 def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, TableDiff]:
     """

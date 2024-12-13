@@ -108,7 +108,11 @@ class Entry:
 
     # equals
     def __eq__(self, other):
-        return hash(self) == hash(other) 
+        a = self.max_time == other.max_time
+        b = self.parent == other.parent
+        c = self.expected_time == other.expected_time
+
+        return a and b and c
     
     # less than
     def __lt__(self, other):

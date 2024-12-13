@@ -1,3 +1,4 @@
+from numpy import e
 from baruah_modified import original_baruah
 from btypes import Graph, Node, Entry, Tables, Table
 from typing import List, Mapping, Dict, Tuple, Set
@@ -150,6 +151,8 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
     changes[start_node].insert(e.to_node, difference(tab[start_node], new_start_node_table))
 
     # print(changes[start_node].as_TableDiff())
+
+    # print(changes[start_node].as_TableDiff())
     # print({node: change.as_TableDiff() for node, change in changes.items()})
 
     queue: List[Node] = []
@@ -183,7 +186,7 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
             create_cond1: Dict[Entry, bool] = {}
             # the entry has better expected time than some feasible entry
             create_cond2: Dict[Entry, bool] = {}
-
+            
             for entry_v in new_tab_v:
                 create_cond1[entry_v] = True
                 create_cond2[entry_v] = False
@@ -231,9 +234,10 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                 # define associated entry in u
                 associated_entry = deepcopy(entry_u)
                 associated_entry.expected_time = min_feasible_entries[0].expected_time + edge.expected_delay
- 
+                
                 new_tab_u.insert_ppd(associated_entry)
-            
+
+                            
             # create
             if new_tab_v: 
                 d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
@@ -241,7 +245,46 @@ def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value:
                     if create_cond1[entry_v] and create_cond2[entry_v]:
                         d = max(d_min, edge.expected_delay + entry_v.max_time)
                         de = edge.expected_delay + entry_v.expected_time
+                        
+                        if entry_v.parent == u:
+                            # determine min feasible edges in tab[u]
+                            # check if at least one is in new_tab_u, if none then continue
 
+                            edge_vu = graph.edge(v, u)
+                            d_min = entry_v.max_time - edge_vu.worst_case_delay
+                            d_max = entry_v.max_time - edge_vu.expected_delay
+
+                            min_de_u = math.inf
+                            min_feasible_entries_u: List[Entry] = []
+
+                            for entry_u in tab[u]:
+                                d_u = entry_u.max_time
+                                de_u = entry_u.expected_time
+
+                                if d_min <= d_u and d_u <= d_max:
+                                    # entry is feasible
+
+                                    if de_u == min_de_u:
+                                        min_feasible_entries_u.append(entry_u)
+                                    elif de_u < min_de_u:
+                                        min_de_u = de_u
+                                        min_feasible_entries_u.clear()
+                                        min_feasible_entries_u.append(entry_u)
+                            
+                            # print(f"u {u}, v {v}")
+                            # print(f"entry_v {entry_v}")
+                            # print(f"min feasible entries u {min_feasible_entries_u}")
+                            # print(f"new tab u {new_tab_u}")
+
+                            should_continue = True
+                            for min_feasible_entry_u in min_feasible_entries_u:
+                                if min_feasible_entry_u in new_tab_u:
+                                    should_continue = False
+                                    break
+
+                            if should_continue:
+                                continue
+                            
                         new_entry = Entry(d, v, de)
                         new_tab_u.insert_ppd(new_entry)
 
@@ -274,19 +317,21 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     new_tables = original_baruah(new_graph, destination, True)
     expected_changes = difference_tables(old_tables, new_tables)
 
-    print(f"--- {name} ---");
-    print()
-
     show_debug = False
     passing = True
 
     if actual_changes != expected_changes:
+        print(f"--- {name} ---");
+        print()
+
         print("FAIL")
         show_debug = True
         passing = False
+        print()
     else:
-        print("PASS")
-    print()
+        # print("PASS")
+        # print()
+        pass
     
     if show_debug:
         print("graph:")
@@ -299,12 +344,35 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
         print("where actual != expected:")
         problem_exists = False
         for node, actual_change in actual_changes.items():
-            if actual_change != expected_changes[node]:
+            expected_change = expected_changes[node]
+
+            # added_only_actual = actual_change.added - expected_change.added
+            # added_only_expected = expected_change.added - actual_change.added
+
+            # removed_only_actual = actual_change.removed - expected_change.removed
+            # removed_only_expected = expected_change.removed - actual_change.removed
+
+            # if added_only_actual:
+            #     print(f"NODE {node} ADDED_ONLY_ACTUAL {added_only_actual}")
+            # 
+            # if added_only_expected:
+            #     print(f"NODE {node} ADDED_ONLY_EXPECTED {added_only_expected}")
+
+            # if removed_only_actual:
+            #     print(f"NODE {node} REMOVED_ONLY_ACTUAL {removed_only_actual}")
+
+            # if removed_only_expected:
+            #     print(f"NODE {node} REMOVED_ONLY_ACTUAL {removed_only_expected}")
+
+
+            
+            if actual_change != expected_change:
                 problem_exists = True 
-                print("    actual:")
-                print("    " + str(actual_changes))
-                print("    expected:")
-                print("    " + str(expected_changes))
+                print(f"    NODE {node} ACTUAL:")
+                print("    " + str(actual_change))
+                print()
+                print(f"    NODE {node} EXPECTED:")
+                print("    " + str(expected_change))
                 print()
 
         if not problem_exists:
@@ -472,9 +540,9 @@ def random_test(num_tests=1000, min_nodes=2, max_nodes=15, max_delay=20):
 
 def atest():
     g = Graph({
-        0: { 1: (20, 20), 2: (4, 15) },
-        1: { 2: (6, 16), 0: (3, 14) },
-        2: {}
+        0: { 1: (0, 5), 2: (19, 19) },
+        1: { 2: (3, 19), 0: (0, 15) },
+        2: { 1: (1, 5) }
     })
     
     # for node, table in original_baruah(g, 2, True).items():

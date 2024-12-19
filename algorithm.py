@@ -483,22 +483,8 @@ def atest():
     test_algorithm("atest", g, 2, (1, 2), 8)
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    # random_test()
-    g = Graph({
-        0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
-        1: {2: (15, 16), 3: (6, 7)}, 
-        2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
-        3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
-        4: {5: (13, 14), 1: (19, 20)}, 
-        5: {0: (4, 12)}
-    })
-    draw_graph(g)
-    test_algorithm("test", g, 5, (1, 3), 4)
-=======
     # atest()
     random_test(num_tests=1000, max_nodes=3, max_delay=20)
->>>>>>> 4158ec61a2420de462e4e44ce352689f6d0a89fc
     # dense_test()
     # single_test()
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Dict, Tuple, Mapping, Set
+from copy import deepcopy
 
 class Table:
     entries: List[Entry]
@@ -146,19 +147,19 @@ class Node_obj:
             tab_u.insert_ppd(new_entry)
         return tab_u
 
-    def propogate(self, updated, parent, entries):
+    def propogate(self, relaxed_edges, parent, entries):
         if entries:
             self.update_tables(entries, parent)
-
-        new_updated = updated + [self.label]
-
+        new_relaxed = deepcopy(relaxed_edges)
         for neighbor, (expected, worse) in self.in_going.items():
-            if neighbor.label in updated:
+            new_relaxed.append(Edge(neighbor.label, self.label, expected, worse))
+        for neighbor, (expected, worse) in self.in_going.items():
+            edge = Edge(neighbor.label, self.label, expected, worse)
+            if edge in relaxed_edges:
                 continue
-
             new_entries = self.relax(neighbor)
 
-            neighbor.propogate(new_updated, self.label, new_entries)
+            neighbor.propogate(new_relaxed, self.label, new_entries)
 
 
     def __str__(self):

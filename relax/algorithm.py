@@ -90,138 +90,9 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
     return TableDiff(removed, added)
 
     
-def algorithm(graph: Graph, tab: Tables, changed_edge: Tuple[Node, Node], value: int) -> Dict[Node, TableDiff]:
-    e = graph.edge(*changed_edge)
-    changes: Mapping[Node, TableDiff] = {}
-
-    for node in graph.nodes():
-        changes[node] = TableDiff()
-
-    start_node = e.from_node
-    edge_change = value - e.expected_delay
-
-    # no change
-    if edge_change == 0:
-        return changes
-
-    increment = edge_change > 0
-
-    # determine changes in the start node's table
-    new_start_node_table = Table()
-    
-    if tab[e.to_node]:
-        d_min = e.worst_case_delay + min([entry.max_time for entry in tab[e.to_node].entries])
-        for other_entry in tab[e.to_node]:
-            d = max(d_min, value + other_entry.max_time)
-            de = other_entry.expected_time + value
-
-            new_entry = Entry(d, e.to_node, de)
-            new_start_node_table.insert_ppd(new_entry)
-
-    for added_entry in tab[e.from_node]:
-        if added_entry.parent != e.to_node:
-            new_start_node_table.insert_ppd(deepcopy(added_entry))
-
-    changes[start_node] |= difference(tab[start_node], new_start_node_table)
-
-    queue: List[Node] = []
-    queue.append(start_node)
-
-    # nodes have access to their neighbor's:
-    # tab[neighbor]
-    # changes[neighbor]
-
-    while queue:
-        v = queue.pop(0)
-        
-        # reconstruct the new table of v from the changes
-        new_tab_v = deepcopy(tab[v])
-        for removed_entry in changes[v].removed:
-            new_tab_v.entries.remove(removed_entry)
-        for added_entry in changes[v].added:
-            new_tab_v.insert_ppd(added_entry)
-        
-        for u in graph.neighbor_of(v):
-            edge = graph.edge(u, v)
-
-            new_tab_u = Table()
-
-            # entries in changes[v].added may lead to the creation of a new entry in u
-            # if both of the following conditions are satisfied
-            
-            # the entry is not feasible for any entry in u
-            create_cond1: Dict[Entry, bool] = {}
-            # the entry has better expected time than some feasible entry
-            create_cond2: Dict[Entry, bool] = {}
-
-            for added_entry in changes[v].added:
-                create_cond1[added_entry] = True
-                create_cond2[added_entry] = False
-
-            for entry_u in tab[u].entries:
-                # consider only entries that lead to v
-                if v != entry_u.parent:
-                    new_tab_u.insert_ppd(entry_u)
-                    continue
-
-                # determine feasible entries with minimum typical time
-                d_min = entry_u.max_time - edge.worst_case_delay
-                d_max = entry_u.max_time - edge.expected_delay
-                
-                min_de_v = math.inf
-                min_feasible_entries: List[Entry] = []
-
-                max_de_v = -math.inf
-
-                for entry_v in new_tab_v.entries:
-                    d_v = entry_v.max_time
-                    de_v = entry_v.expected_time
-
-                    if d_min <= d_v and d_v <= d_max:
-                        # entry is feasible
-
-                        if entry_v in changes[v].added:
-                            create_cond1[entry_v] = False
-
-                        if de_v == min_de_v:
-                            min_feasible_entries.append(entry_v)
-                        elif de_v < min_de_v:
-                            min_de_v = de_v
-                            min_feasible_entries.clear()
-                            min_feasible_entries.append(entry_v)
-
-                        if max_de_v < de_v:
-                            max_de_v = de_v
-                
-                for added_entry in changes[v].added:
-                    if added_entry.expected_time < max_de_v:
-                        create_cond2[added_entry] = True
-                    
-                # define associated entry in u
-                associated_entry = deepcopy(entry_u)
-                associated_entry.expected_time = min_feasible_entries[0].expected_time + edge.expected_delay
- 
-                new_tab_u.insert_ppd(associated_entry)
-            
-            # create
-            if new_tab_v.entries: 
-                d_min = edge.worst_case_delay + min([entry.max_time for entry in new_tab_v.entries])
-                for added_entry in changes[v].added:
-                    if create_cond1[added_entry] and create_cond2[added_entry]:
-                        d = max(d_min, edge.expected_delay + added_entry.max_time)
-                        de = edge.expected_delay + added_entry.expected_time
-
-                        new_entry = Entry(d, v, de)
-                        new_tab_u.insert_ppd(new_entry)
-
-            diff = difference(tab[u], new_tab_u)
-            changes_before = deepcopy(changes[u])
-            changes[u] |= diff
-
-            if changes_before != changes[u]:
-                queue.append(u)
-
-    return changes
+def algorithm(G: Graph, u: Node, v:Node):
+    v_node = G.nodes_obj[v]
+    v_node.propogate([v], u, [])
 
 def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, TableDiff]:
     """
@@ -232,15 +103,18 @@ def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, Table
         output_differences[u] = difference(old_table, new_tables[u])
     return output_differences
 
-def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], new_typical_delay: int):
-    old_tables = original_baruah(graph, destination, True)
+def construct_tables(graph) -> Tables:
+    return dict((node, node_obj.routing_table) for node, node_obj in graph.nodes_obj.items())
 
-    actual_changes = algorithm(graph, old_tables, edge, new_typical_delay)
-    
-    new_graph = deepcopy(graph)
-    new_graph.modify_edge(*edge, (new_typical_delay, graph.edge(*edge).worst_case_delay))
-    new_tables = original_baruah(new_graph, destination, True)
+def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], change: Tuple[int, int]):
+    old_tables = original_baruah(graph, destination, True)
+    (u, v) = edge
+    graph.modify_edge(u, v, change)
+    algorithm(graph, u, v)
+    new_tables = original_baruah(graph, destination, True)
     expected_changes = difference_tables(old_tables, new_tables)
+    actual_tables = construct_tables(graph)
+    actual_changes = difference_tables(old_tables, actual_tables)
 
     print(f"--- {name} ---");
     print()
@@ -249,43 +123,12 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
 
     if actual_changes != expected_changes:
         print("FAIL")
-        show_debug = True
+        print(actual_changes)
+        print(expected_changes)
     else:
         print("PASS")
     print()
-    
-    if show_debug:
-        print("graph:")
-        print(graph)
-        print()
 
-        print(f"destination: {destination}, edge: {edge}, new typical delay: {new_typical_delay}")
-        print()
-        
-        print("where actual != expected:")
-        problem_exists = False
-        for node, actual_change in actual_changes.items():
-            if actual_change != expected_changes[node]:
-                problem_exists = True 
-                print("    actual:")
-                print("    " + str(actual_changes))
-                print("    expected:")
-                print("    " + str(expected_changes))
-                print()
-
-        if not problem_exists:
-            print("None")
-            print()
-
-        print("old tables:")
-        for node, table in old_tables.items():
-            print(f"{node}: {table}")
-        print()
-
-        print("new tables:")
-        for node, table in new_tables.items():
-            print(f"{node}: {table}")
-        print()
 
 def dense_test():
     g1 = Graph({
@@ -425,19 +268,18 @@ def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
         to_node = random.choice(list(graph[from_node].keys())) # select one of its edges
         edge = g.edge(from_node, to_node)
         new_delay = random.randint(1, edge.worst_case_delay)
-        test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), new_delay)
+        test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), (new_delay, edge.worst_case_delay))
 
 if __name__ == "__main__":
-    # random_test()
-    g = Graph({
-        0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
-        1: {2: (15, 16), 3: (6, 7)}, 
-        2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
-        3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
-        4: {5: (13, 14), 1: (19, 20)}, 
-        5: {0: (4, 12)}
-    })
-    draw_graph(g)
-    test_algorithm("test", g, 5, (1, 3), 4)
+    random_test(num_tests=3, min_nodes=3, max_nodes=3)
+    # g = Graph({
+    #     0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
+    #     1: {2: (15, 16), 3: (6, 7)}, 
+    #     2: {3: (16, 19), 0: (11, 17), 5: (10, 19)}, 
+    #     3: {4: (19, 20), 2: (3, 18), 5: (14, 15)}, 
+    #     4: {5: (13, 14), 1: (19, 20)}, 
+    #     5: {0: (4, 12)}
+    # })
+    # test_algorithm("test", g, 5, (1, 3), (4, 7))
     # dense_test()
     # single_test()

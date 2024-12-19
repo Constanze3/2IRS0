@@ -4,7 +4,7 @@ from btypes import Graph, Node, Tables, Edge, Table, Entry, TemporalGraph
 
 updated = []
 
-def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Tables:
+def original_baruah(graph: Graph, destination: str|int, keep_entries: bool) -> Tables:
     """
     Runs Baruah's routing algorithm.
 

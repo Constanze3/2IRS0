@@ -62,14 +62,10 @@ class Table:
         all entries that have the same parent and are dominated by `entry` get removed.
         """
 
-        if entry.parent is None:
-            self.entries.append(entry)
-            return
-
         should_insert = True
         remove = []
         for existing_entry in self.entries:
-            if existing_entry.parent != entry.parent:
+            if existing_entry.parent != None and entry.parent != None and existing_entry.parent != entry.parent:
                 # only consider domination if existing entry has the same parent as entry
                 continue
 
@@ -337,7 +333,7 @@ class TemporalGraph:
             string += (f"Time {i}: {graph}\n")
         return string
 
-def original_baruah(graph: Graph, destination: str|int, keep_entries: bool) -> Tables:
+def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Tables:
     """
     Runs Baruah's routing algorithm.
 
@@ -389,14 +385,14 @@ def original_baruah(graph: Graph, destination: str|int, keep_entries: bool) -> T
             # it's exact definition is complicated
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
-
+            
             new_entry = Entry(d, v, de)
             if keep_entries:
                 tab[u].insert_ppd(new_entry)
             else:
                 tab[u].insert(new_entry)
 
-    for i in range(len(nodes) - 1):
+    for i in range(len(nodes)):
         for edge in edges:
             relax(edge)
 
@@ -426,32 +422,6 @@ def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
             return edge
 
     return None
-
-if __name__ == "__main__":
-    G = Graph({
-        1: {2: (4, 10), 4: (15, 25)},
-        2: {3: (4, 10), 4: (12, 15)},
-        3: {4: (4, 10)},
-        4: {}
-    })
-    destination = 4
-    G.init_tables(destination)
-    tables = original_baruah(G, destination, True)
-
-    u = 1
-    v = 1
-    new_delay = (5, 10)
-
-    G.modify_edge(u, v, new_delay)
-    u_node = G.nodes_obj[u]
-    u_neighbors = [x.label for x in u_node.neighbors if x.label != v]
-    u_node.propogate(u_neighbors, v, [])
-
-    v_node = G.nodes_obj[v]
-    v_neighbors = [x.label for x in v_node.neighbors if x.label != u]
-    v_node.propogate(v_neighbors, u, [])
-    for x, node in G.nodes_obj.items():
-        print(node.routing_table)
 
 class TableDiff:
     def __init__(self, removed: Set[Entry] | None = None, added: Set[Entry] | None = None) -> None:

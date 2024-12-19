@@ -56,14 +56,14 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
             # it's exact definition is complicated
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
-
+            
             new_entry = Entry(d, v, de)
             if keep_entries:
                 tab[u].insert_ppd(new_entry)
             else:
                 tab[u].insert(new_entry)
 
-    for i in range(len(nodes) - 1):
+    for i in range(len(nodes)):
         for edge in edges:
             relax(edge)
 

@@ -53,14 +53,10 @@ class Table:
         all entries that have the same parent and are dominated by `entry` get removed.
         """
 
-        if entry.parent is None:
-            self.entries.append(entry)
-            return
-
         should_insert = True
         remove = []
         for existing_entry in self.entries:
-            if existing_entry.parent != entry.parent:
+            if existing_entry.parent != None and entry.parent != None and existing_entry.parent != entry.parent:
                 # only consider domination if existing entry has the same parent as entry
                 continue
 

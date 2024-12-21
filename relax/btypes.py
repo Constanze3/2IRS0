@@ -143,20 +143,29 @@ class Node_obj:
             tab_u.insert_ppd(new_entry)
         return tab_u
 
-    def propogate(self, relaxed_edges, parent, entries):
-        if entries:
-            self.update_tables(entries, parent)
+    def clean(self, relaxed_edges, parent):
         new_relaxed = deepcopy(relaxed_edges)
         for neighbor, (expected, worse) in self.in_going.items():
             new_relaxed.append(Edge(neighbor.label, self.label, expected, worse))
+        self.update_tables([], parent)
+        for neighbor, (expected, worse) in self.in_going.items():
+            edge = Edge(neighbor.label, self.label, expected, worse)
+            if edge in relaxed_edges:
+                continue
+            neighbor.clean(new_relaxed, self.label)
+
+    def propogate(self, relaxed_edges, parent, entries):
+        new_relaxed = deepcopy(relaxed_edges)
+        for neighbor, (expected, worse) in self.in_going.items():
+            new_relaxed.append(Edge(neighbor.label, self.label, expected, worse))
+        if entries:
+            self.update_tables(entries, parent)
         for neighbor, (expected, worse) in self.in_going.items():
             edge = Edge(neighbor.label, self.label, expected, worse)
             if edge in relaxed_edges:
                 continue
             new_entries = self.relax(neighbor)
-
             neighbor.propogate(new_relaxed, self.label, new_entries)
-
 
     def __str__(self):
         return f"Node {self.label} with routing table:\n{self.routing_table}"
@@ -303,7 +312,7 @@ class Graph:
                 result += f"    -({weights[0]}, {weights[1]})-> {neighbor}\n"
 
         return result 
-    
+
 def test():
     G = Graph({
         1: {2: (4, 10), 4: (15, 25)},

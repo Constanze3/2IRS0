@@ -143,16 +143,16 @@ class Node_obj:
             tab_u.insert_ppd(new_entry)
         return tab_u
 
-    def clean(self, relaxed_edges, parent):
+    def clean(self, relaxed_edges, parent, origin):
         new_relaxed = deepcopy(relaxed_edges)
         for neighbor, (expected, worse) in self.in_going.items():
             new_relaxed.append(Edge(neighbor.label, self.label, expected, worse))
         self.update_tables([], parent)
         for neighbor, (expected, worse) in self.in_going.items():
             edge = Edge(neighbor.label, self.label, expected, worse)
-            if edge in relaxed_edges:
+            if edge in relaxed_edges or neighbor.label == origin:
                 continue
-            neighbor.clean(new_relaxed, self.label)
+            neighbor.clean(new_relaxed, self.label, origin)
 
     def propogate(self, relaxed_edges, parent, entries):
         new_relaxed = deepcopy(relaxed_edges)

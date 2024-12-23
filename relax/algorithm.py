@@ -1,5 +1,4 @@
-from baruah_modified import original_baruah
-from btypes import Graph, Node, Entry, Tables, Table
+from btypes import Graph, Node, Entry, Tables, Table, Edge, original_baruah
 from typing import List, Mapping, Dict, Tuple, Set
 from copy import deepcopy
 import random
@@ -25,7 +24,10 @@ class TableDiff:
     def __ior__(self, other):
         return TableDiff(self.removed | other.removed, self.added | other.added)
 
-    
+def print_tables(tables: Tables):
+    for x, y in tables.items():
+        print(x, y)
+
 def difference(old_table: Table, new_table: Table) -> TableDiff:
     """
     Finds for each table the difference between old and new table.
@@ -92,7 +94,19 @@ def difference(old_table: Table, new_table: Table) -> TableDiff:
     
 def algorithm(G: Graph, u: Node, v:Node):
     v_node = G.nodes_obj[v]
-    v_node.propogate([v], u, [])
+    u_node = G.nodes_obj[u]
+    v_neighbors = [
+        Edge(
+            from_node=x.label, 
+            to_node=v_node.label,
+            expected_delay=expected,
+            worst_case_delay=worst
+        ) for x, (expected, worst) in v_node.in_going.items() if x.label != u
+    ] # technically, unnecessary. Might remove it in the future 
+    n = len(G.nodes_obj)
+    u_node.clean(v_neighbors, v, v)
+    for _ in range(n):
+        v_node.propogate(v_neighbors, v, []) # passing v_node to propogate does nothing.
 
 def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, TableDiff]:
     """
@@ -109,6 +123,7 @@ def construct_tables(graph) -> Tables:
 def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node, Node], change: Tuple[int, int]):
     old_tables = original_baruah(graph, destination, True)
     (u, v) = edge
+    old_edges = deepcopy(graph.data)
     graph.modify_edge(u, v, change)
     algorithm(graph, u, v)
     new_tables = original_baruah(graph, destination, True)
@@ -116,19 +131,24 @@ def test_algorithm(name: str, graph: Graph, destination: Node, edge: Tuple[Node,
     actual_tables = construct_tables(graph)
     actual_changes = difference_tables(old_tables, actual_tables)
 
-    print(f"--- {name} ---");
-    print()
+    # print(f"--- {name} ---");
+    # print()
 
     show_debug = False
 
     if actual_changes != expected_changes:
         print("FAIL")
-        print(actual_changes)
-        print(expected_changes)
-    else:
-        print("PASS")
-    print()
-
+        print(old_edges)
+        print(edge)
+        print(change)
+        print("result: ")
+        print_tables(actual_tables)
+        print("expected: ")
+        print_tables(new_tables)
+        print("old tables: ")
+        print_tables(old_tables)
+        return 0
+    return 1
 
 def dense_test():
     g1 = Graph({
@@ -243,6 +263,7 @@ def single_test():
     # draw_graph(g)
 
 def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
+    passes = 0
     def random_delay():
         typical = random.randint(1, max_delay-1)
         return (typical, random.randint(typical + 1, max_delay))
@@ -260,18 +281,22 @@ def random_test(num_tests=1000, min_nodes=5, max_nodes=15, max_delay=20):
             while to_node == from_node: # makes sure that the to node and the from node are not the same
                 to_node = random.randint(0, biggest_node)
             graph[from_node][to_node] = random_delay() # currently has an issue of accidentally overriding previous edges. But oh well.
-
+            # graph[to_node].pop(from_node, None)
         g = Graph(graph)
+        g.init_tables(biggest_node)
         from_node = random.randint(0,biggest_node) # select a random node
         while len(graph[from_node].keys()) == 0: # make sure that the node has out going edges. (might not always be the case that the node has outgoing edges)
             from_node = random.randint(0,biggest_node) # select a random node
         to_node = random.choice(list(graph[from_node].keys())) # select one of its edges
         edge = g.edge(from_node, to_node)
         new_delay = random.randint(1, edge.worst_case_delay)
-        test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), (new_delay, edge.worst_case_delay))
+        passes += test_algorithm(f"test {i}", g, biggest_node, (from_node, to_node), (new_delay, edge.worst_case_delay))
+        total = i + 1
+        print(f" {total - passes:,}/{total:,}", end="\r")
+    return passes
 
 if __name__ == "__main__":
-    random_test(num_tests=3, min_nodes=3, max_nodes=3)
+    random_test(num_tests=1_000_000, min_nodes=5, max_nodes=5)
     # g = Graph({
     #     0: {1: (6, 20), 4: (5, 19), 2: (13, 18), 5: (11, 17)}, 
     #     1: {2: (15, 16), 3: (6, 7)}, 

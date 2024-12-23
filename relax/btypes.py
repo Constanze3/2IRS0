@@ -158,14 +158,23 @@ class Node_obj:
         new_relaxed = deepcopy(relaxed_edges)
         for neighbor, (expected, worse) in self.in_going.items():
             new_relaxed.append(Edge(neighbor.label, self.label, expected, worse))
-        if entries:
-            self.update_tables(entries, parent)
+        self.update_tables(entries, parent)
         for neighbor, (expected, worse) in self.in_going.items():
             edge = Edge(neighbor.label, self.label, expected, worse)
             if edge in relaxed_edges:
                 continue
             new_entries = self.relax(neighbor)
             neighbor.propogate(new_relaxed, self.label, new_entries)
+
+    # def complete_propogate(self, parent, entries):
+    #     old_table = deepcopy(self.routing_table)
+    #     self.update_tables(entries, parent)
+    #     diff = difference(old_table, self.routing_table)
+    #     if not diff.added and not diff.removed:
+    #         return
+    #     for neighbor, (expected, worse) in self.in_going.items():
+    #         new_entries = self.relax(neighbor)
+    #         neighbor.complete_propogate(self.label, new_entries)
 
     def __str__(self):
         return f"Node {self.label} with routing table:\n{self.routing_table}"
@@ -451,3 +460,82 @@ class TableDiff:
 
     def __ior__(self, other):
         return TableDiff(self.removed | other.removed, self.added | other.added)
+
+def construct_tables(graph) -> Tables:
+    return dict((node, node_obj.routing_table) for node, node_obj in graph.nodes_obj.items())
+
+def difference(old_table: Table, new_table: Table) -> TableDiff:
+    """
+    Finds for each table the difference between old and new table.
+
+    It returns for a table what are entries that were removed and what are entreis
+    that were added to the old table to get to the new table.
+    """
+
+    old_entries = sorted(old_table.entries)
+    new_entries = sorted(new_table.entries)
+
+    # entries in old table that were removed to get to the new table
+    removed: Set[Entry] = set()
+    # entries in new table that were an addition to the entries of old table
+    added: Set[Entry] = set()
+
+    index_old = 0
+    index_new = 0
+
+    while(True):
+        if len(old_entries) <= index_old and len(new_entries) <= index_new:
+            # no more entries to consider
+            break
+
+        if len(old_entries) <= index_old:
+            entry_new = new_entries[index_new]
+            # entry_new only exists in the new table -> it was added
+            added.add(entry_new)
+            index_new += 1
+            continue
+
+        if len(new_entries) <= index_new:
+            entry_old = old_entries[index_old]
+            # entry_old only exist in the old table -> it was removed
+            removed.add(entry_old)
+            index_old += 1
+            continue
+        
+        # at this point: index_old < len(old_table) and index_new < len(new_table) 
+
+        entry_old = old_entries[index_old]
+        entry_new = new_entries[index_new]
+
+        if entry_old == entry_new:
+            # entry exists in both tables -> not a change
+            index_new += 1
+            index_old += 1
+            continue
+
+        if entry_old < entry_new:
+            # entry_old was "skipped over" in new table, the table is sorted -> the new table doesn't contain it -> it was removed
+            removed.add(entry_old)
+            index_old += 1
+            continue
+        
+        if entry_new < entry_old:
+            # entry_new was "skipped over" in old table, the table is sorted -> the old table doesn't contain it -> it was added
+            added.add(entry_new)
+            index_new += 1
+            continue
+    
+    return TableDiff(removed, added)
+
+def difference_tables(old_tables: Tables, new_tables: Tables)-> Dict[Node, TableDiff]:
+    """
+    Return a map, for each node return the difference.
+    """
+    output_differences = {}
+    for (u, old_table) in old_tables.items(): 
+        output_differences[u] = difference(old_table, new_tables[u])
+    return output_differences
+
+def print_tables(tables: Tables):
+    for x, y in tables.items():
+        print(x, y)

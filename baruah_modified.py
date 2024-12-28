@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from btypes import Graph, Node, Tables, Edge, Table, Entry, TemporalGraph
 
-updated = []
 
-def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Tables:
+
+def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     """
     Runs Baruah's routing algorithm.
 
@@ -17,13 +17,11 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
     nodes = graph.nodes()
     edges = graph.edges()
 
-    # shuffle(edges)
-
     # initialization
     tab: Tables = {}
     for node in nodes:
         tab[node] = Table()
-    tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0)])
+    tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0, creation_chain=[])])
 
     def relax(edge: Edge):
         # u, v are the start and end vertices of the edge
@@ -52,12 +50,19 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
             d_v = entry.max_time
             de_v = entry.expected_time
             p_v = entry.parent
+            
+            if u in entry.creation_chain:
+                continue
+
             # d is a worst case delay bound
             # it's exact definition is complicated
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
-            
-            new_entry = Entry(d, v, de)
+
+            new_entry_creation_chain = entry.creation_chain.copy()
+            new_entry_creation_chain.append(v)
+
+            new_entry = Entry(d, v, de, new_entry_creation_chain)
             if keep_entries:
                 tab[u].insert_ppd(new_entry)
             else:
@@ -77,23 +82,73 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
 
     return tab
 
-def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
-    if time == 0:
-        return None
+def draw_graph(graph: Graph):
+    import networkx as nx
+    import matplotlib.pyplot as plt
 
-    old_graph = graphs.at_time(time - 1)
-    new_graph = graphs.at_time(time)
+    nx_graph = nx.DiGraph()
 
-    old_edges = old_graph.edges()
-    new_edges = new_graph.edges()
-    # assuming there is only 1 edge that changes
+    for node in graph.nodes():
+        nx_graph.add_node(node)
 
-    for edge in new_edges:
-        if edge not in old_edges:
-            return edge
+    for edge in graph.edges():
+        nx_graph.add_edge(
+            edge.from_node,
+            edge.to_node,
+            expected_delay=edge.expected_delay,
+            worst_case_delay=edge.worst_case_delay
+        )
 
-    return None
+    pos = nx.spring_layout(nx_graph)
 
+    colors = ["b"] * len(nx_graph.edges())
+    nx.draw_networkx(nx_graph, pos, with_labels=True, edge_color=colors)
+    nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=nx.get_edge_attributes(nx_graph, "expected_delay"), label_pos=0.3)
+    nx.draw_networkx_edge_labels(nx_graph, pos, edge_labels=nx.get_edge_attributes(nx_graph, "worst_case_delay"), font_color="red", label_pos=0.4)
+
+    plt.show()
+
+def test():
+    print("TEST:")
+
+    G = Graph({
+        0: {1: (5, 10)},
+        1: {2: (5, 10), 4: (5, 10)},
+        2: {3: (5, 10)},
+        3: {0: (5, 10)},
+        4: {1: (5, 10)}
+    })
+
+    tables = original_baruah(G, 3, True)
+    for (node, table) in tables.items():
+        print(f"{node}: {table}")
+
+    draw_graph(G)
+
+    
+
+if __name__ == "__main__":
+
+
+    test()
+# def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
+#     if time == 0:
+#         return None
+# 
+#     old_graph = graphs.at_time(time - 1)
+#     new_graph = graphs.at_time(time)
+# 
+#     old_edges = old_graph.edges()
+#     new_edges = new_graph.edges()
+#     # assuming there is only 1 edge that changes
+# 
+#     for edge in new_edges:
+#         if edge not in old_edges:
+#             return edge
+# 
+#     return None
+
+# updated = []
 
 # def check_dominates_or_dominated(new_entry, table) -> None | List[Entry]:
 #     for entry in table.entries:

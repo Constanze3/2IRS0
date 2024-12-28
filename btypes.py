@@ -100,11 +100,17 @@ class Edge:
         return hash((self.from_node, self.to_node, self.expected_delay, self.worst_case_delay))
 
 
-@dataclass
 class Entry:
     max_time: int
     parent: Node | None
     expected_time: int
+    creation_chain: List[Node] | None
+
+    def __init__(self, max_time: int, parent: Node | None, expected_time: int, creation_chain = None):
+        self.max_time = max_time
+        self.parent = parent
+        self.expected_time =expected_time
+        self.creation_chain = creation_chain
 
     # equals
     def __eq__(self, other):

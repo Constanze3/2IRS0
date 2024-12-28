@@ -91,7 +91,7 @@ class Node_obj:
     label: Node
     out_going: Dict[Node_obj, Tuple[int, int]]  # Neighboring nodes with (expected delay, worst-case delay)
     in_going: Dict[Node_obj, Tuple[int, int]]  # Neighboring nodes with (expected delay, worst-case delay)
-    routing_table: RoutingTable
+    routing_table: Table
 
     def __init__(self, node_id):
         self.label = node_id
@@ -183,7 +183,10 @@ class Node_obj:
         return hash(self.label)
 
     def __eq__(self, other):
-        return isinstance(other, Node) and self.label == other.label
+        if type(other) == Node_obj:
+            return isinstance(other, Node) and self.label == other.label
+        else:
+            return False
 
 @dataclass
 class Edge:
@@ -206,11 +209,17 @@ class Edge:
         return hash((self.from_node, self.to_node, self.expected_delay, self.worst_case_delay))
 
 
-@dataclass
 class Entry:
     max_time: int
     parent: Node | None
     expected_time: int
+    creation_chain: List[Node] | None
+
+    def __init__(self, max_time: int, parent: Node | None, expected_time: int, creation_chain = None):
+        self.max_time = max_time
+        self.parent = parent
+        self.expected_time =expected_time
+        self.creation_chain = creation_chain
 
     # equals
     def __eq__(self, other):
@@ -351,7 +360,7 @@ class TemporalGraph:
             string += (f"Time {i}: {graph}\n")
         return string
 
-def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Tables:
+def original_baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
     """
     Runs Baruah's routing algorithm.
 
@@ -364,13 +373,11 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
     nodes = graph.nodes()
     edges = graph.edges()
 
-    # shuffle(edges)
-
     # initialization
     tab: Tables = {}
     for node in nodes:
         tab[node] = Table()
-    tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0)])
+    tab[destination] = Table(entries=[Entry(parent=None, max_time=0, expected_time=0, creation_chain=[])])
 
     def relax(edge: Edge):
         # u, v are the start and end vertices of the edge
@@ -399,12 +406,22 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
             d_v = entry.max_time
             de_v = entry.expected_time
             p_v = entry.parent
+
+            if entry.creation_chain == None:
+                raise Exception("entry should have a creation chain")
+            
+            if u in entry.creation_chain:
+                continue
+
             # d is a worst case delay bound
             # it's exact definition is complicated
             d = max(d_min, c_t + d_v)
             de = de_v + c_t
-            
-            new_entry = Entry(d, v, de)
+
+            new_entry_creation_chain = entry.creation_chain.copy()
+            new_entry_creation_chain.append(v)
+
+            new_entry = Entry(d, v, de, new_entry_creation_chain)
             if keep_entries:
                 tab[u].insert_ppd(new_entry)
             else:
@@ -423,6 +440,8 @@ def original_baruah(graph: Graph, destination: str, keep_entries: bool) -> Table
     #     node.table = tab[node]
 
     return tab
+
+
 
 def get_single_edge_change(graphs: TemporalGraph, time: int) -> None | Edge:
     if time == 0:

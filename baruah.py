@@ -2,9 +2,6 @@ from structures import Node, Edge, Graph, Entry, Table
 from typing import Dict, Callable
 
 def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table]:
-    """
-    Baruah's algorithm with per parent domination and no cyclic entries.
-    """
     nodes = graph.nodes()
     edges = graph.edges()
 

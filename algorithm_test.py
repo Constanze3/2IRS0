@@ -21,7 +21,7 @@ def test_algorithm(graph: Graph, destination: Node, edge: Tuple[Node, Node], new
         print("FAIL")
 
         print("graph data")
-        print(graph.data)
+        print(original_graph.data)
         print()
 
         print("original graph")
@@ -77,17 +77,17 @@ def random_weights(max_delay: int) -> Tuple[int, int]:
     return (typical_delay, random.randint(typical_delay, max_delay))
 
 def random_test(
-        num_tests: int = 100000, 
-        min_nodes: int = 3, 
-        max_nodes: int = 5, 
-        min_edges: int = 1, 
+        num_tests: int = 10000000, 
+        min_nodes: int = 4, 
+        max_nodes: int = 6, 
+        min_edges: int = 3, 
         max_edges: int | None = None, 
         max_delay=20,
 ):
     passes = 0
 
     for i in range(1, num_tests + 1):
-        if i % 1000 == 0:
+        if i % 10000 == 0:
             print(f"AT TEST {i}")
             print()
 
@@ -133,6 +133,13 @@ def random_test(
     
     print(f"{passes} passed out of {num_tests}")
 
+def why():
+    graph = Graph({0: {4: (8, 18), 3: (12, 14), 1: (1, 5)}, 1: {2: (3, 16)}, 2: {0: (3, 8), 4: (12, 15)}, 3: {0: (6, 7), 4: (13, 15)}, 4: {2: (20, 20), 1: (18, 18)}})
+
+    print(test_algorithm(graph, 4, (0, 4), 18))
+
+
 if __name__ == "__main__":
-    random.seed(0)
+    random.seed(1)
     random_test()
+    # why()

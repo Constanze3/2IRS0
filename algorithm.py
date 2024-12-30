@@ -77,7 +77,7 @@ class Router:
         to_send = []
 
         new_table = deepcopy(self.table)
-        message.changes.apply_ppd(new_table)
+        message.changes.apply(new_table)
 
         for edge in self.incoming_edges:
             old = Table()

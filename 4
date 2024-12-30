@@ -272,6 +272,28 @@ class TableDiff:
         self.removed = old_table.entries - new_table.entries
         self.added = new_table.entries - old_table.entries
 
+    def apply_d(self: TableDiff, table: Table):
+        """
+        Applies the diff onto the provided `table` with domination checks. 
+        """
+        for removed_entry in self.removed:
+            table.entries.remove(removed_entry)
+        
+        for added_entry in self.added:
+            table.insert_d(added_entry)
+
+
+    def apply_ppd(self: TableDiff, table: Table):
+        """
+        Applies the diff onto the provided `table` with per parent domination checks. 
+        """
+        for removed_entry in self.removed:
+            if removed_entry in table.entries:
+                table.entries.remove(removed_entry)
+        
+        for added_entry in self.added:
+            table.insert_ppd(added_entry)
+
     def apply(self: TableDiff, table: Table):
         for removed_entry in self.removed:
             if removed_entry in table.entries:

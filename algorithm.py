@@ -26,12 +26,12 @@ class Router:
         self.incoming_edges = incoming_edges
         self.table = Table()
 
-    def calculate_tables(self: Router):
-        """
-        Calculate routing tables towards `self.system.destination`.
-        This is run at the start when every router has a consistent view of the graph.
-        """
-        self.table = baruah(self.system.graph, self.system.destination, relax_ppd_nce)[self.node]
+    # def calculate_tables(self: Router):
+    #     """
+    #     Calculate routing tables towards `self.system.destination`.
+    #     This is run at the start when every router has a consistent view of the graph.
+    #     """
+    #     self.table = baruah(self.system.graph, self.system.destination, relax_ppd_nce)[self.node]
 
     def update_incoming_edges(self: Router, new_incoming_edges: List[Edge]):
         """
@@ -131,8 +131,10 @@ class System:
         Simulates the case when the graph view is distributed to every router in the network
         and routing tables are recalculated based on the uniform graph view. 
         """
-        for router in self.routers.values():
-            router.calculate_tables()
+
+        tables = baruah(self.graph, self.destination, relax_ppd_nce)
+        for (node, table) in tables.items():
+            self.routers[node].table = table
 
     def tables(self) -> Dict[Node, Table]:
         result = {}

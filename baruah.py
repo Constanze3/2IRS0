@@ -1,5 +1,5 @@
 from structures import Node, Edge, Graph, Entry, Table
-from typing import Dict, Callable
+from typing import Dict, Callable, Mapping
 
 def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table]:
     nodes = graph.nodes()
@@ -10,7 +10,7 @@ def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table
         tables[node] = Table()
     tables[destination] = Table(entries=set([Entry(0, [], 0)]))
 
-    for i in range(len(nodes)):
+    for _ in range(len(nodes)):
         for edge in edges:
             relax(edge, tables[edge.from_node], tables[edge.to_node])
 
@@ -74,3 +74,13 @@ def relax_ppd_nce(edge: Edge, from_node_table: Table, to_node_table: Table):
 
         new_entry = Entry(max_time, parents, expected_time)
         table_u.insert_ppd(new_entry)
+
+def apply_domination_to_tables(tables: Mapping[Node, Table]) -> Dict[Node, Table]:
+    result = {}
+    for (node, table) in tables.items():
+        new_table = Table()
+        for entry in table:
+            new_table.insert_d(entry)
+        result[node] = new_table
+
+    return result

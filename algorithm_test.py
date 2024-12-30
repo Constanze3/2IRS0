@@ -86,10 +86,8 @@ def random_test(
 ):
     passes = 0
 
-    for i in range(1, num_tests + 1):
-        if i % 10000 == 0:
-            print(f"AT TEST {i}")
-            print()
+    for test_num in range(1, num_tests + 1):
+        print(f"\rAT TEST {test_num}", end="")
 
         graph = {}
 
@@ -129,7 +127,11 @@ def random_test(
 
         biggest_node = num_nodes - 1
 
-        passes += test_algorithm(graph, biggest_node, (edge_to_change.from_node, edge_to_change.to_node), new_delay)
+        passed = test_algorithm(graph, biggest_node, (edge_to_change.from_node, edge_to_change.to_node), new_delay)
+        passes += passed
+
+        if passed == 0:
+            print(f"\nFAILED AT TEST {test_num}\n")
     
     print(f"{passes} passed out of {num_tests}")
 

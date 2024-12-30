@@ -181,15 +181,3 @@ if __name__ == "__main__":
         max_nodes=6,
         min_edges=3,
     ))
-    
-    
-    graph = random_graph(create_info)
-    system = System(graph, 0)
-
-    edge = random.choice(list(graph.edges()))
-    system.simulate_edge_change((edge.from_node, edge.to_node), random.randint(0, edge.worst_case_delay))
-    
-    print()
-    print("DONE")
-    print()
-    print(system.tables())

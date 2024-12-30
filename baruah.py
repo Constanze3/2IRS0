@@ -10,7 +10,7 @@ def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table
         tables[node] = Table()
     tables[destination] = Table(entries=set([Entry(0, [], 0)]))
 
-    for i in range(len(nodes) - 1):
+    for i in range(len(nodes)):
         for edge in edges:
             relax(edge, tables[edge.from_node], tables[edge.to_node])
 
@@ -51,6 +51,8 @@ def relax_ppd_nce(edge: Edge, from_node_table: Table, to_node_table: Table):
     table_u = from_node_table
     v = edge.to_node
     table_v = to_node_table
+
+    table_u.remove_all_entries_with_parent(v)
 
     if len(table_v.entries) == 0:
         # the table_v is empty there is nothing to update the table_u with

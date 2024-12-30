@@ -152,16 +152,20 @@ class Entry:
             return None
         
     def dominates(self: Entry, other: Entry) -> bool:
-        if self.max_time <= other.max_time and self.expected_time <= other.expected_time:
-            return True
-        else:
-            return False
+        return self.max_time <= other.max_time and self.expected_time <= other.expected_time
+    
+    def equivalent(self: Entry, other: Entry) -> bool:
+        """
+        Checks whether an entry has the same max time and expected time as an `other` entry.
+        """
+        return self.max_time == other.max_time and self.expected_time == other.expected_time
+        
 
     def __eq__(self: Entry, other: object):
         if type(other) == Entry:
             result = True
             result &= self.max_time == other.max_time
-            result &= self.parent() == other.parent()
+            result &= self.parents == other.parents
             result &= self.expected_time == other.expected_time
             return result
         else:
@@ -216,6 +220,10 @@ class Table:
             if existing_entry.parent() != None and entry.parent() != None and existing_entry.parent() != entry.parent():
                 # only consider domination if existing entry has the same parent as entry
                 continue
+            
+            # may be necessary, not sure
+            if existing_entry.equivalent(entry):
+               break
 
             if existing_entry.dominates(entry):
                 should_insert = False
@@ -228,6 +236,15 @@ class Table:
         
         if should_insert:
             self.entries.add(entry)
+
+    def remove_all_entries_with_parent(self: Table, parent: Node):
+        to_remove = []
+        for entry in self.entries:
+            if entry.parent() == parent:
+                to_remove.append(entry)
+
+        for entry_to_remove in to_remove:
+            self.entries.remove(entry_to_remove)
 
     def __iter__(self: Table):
         return iter(self.entries)

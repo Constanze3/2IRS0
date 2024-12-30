@@ -79,14 +79,18 @@ def random_weights(max_delay: int) -> Tuple[int, int]:
 def random_test(
         num_tests: int = 100000, 
         min_nodes: int = 3, 
-        max_nodes: int = 4, 
-        min_edges: int = 10, 
+        max_nodes: int = 5, 
+        min_edges: int = 1, 
         max_edges: int | None = None, 
         max_delay=20,
 ):
     passes = 0
 
     for i in range(1, num_tests + 1):
+        if i % 1000 == 0:
+            print(f"AT TEST {i}")
+            print()
+
         graph = {}
 
         num_nodes = random.randint(min_nodes, max_nodes)

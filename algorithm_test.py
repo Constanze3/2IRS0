@@ -140,6 +140,6 @@ def why():
 
 
 if __name__ == "__main__":
-    random.seed(1)
+    random.seed(3)
     random_test()
     # why()

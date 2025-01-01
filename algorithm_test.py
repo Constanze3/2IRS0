@@ -125,10 +125,8 @@ def random_test(
 ):
     passed = 0
 
-    for i in range(1, num_tests + 1):
-        if i % 10000 == 0:
-            print(f"AT TEST {i}")
-            print()
+    for test_num in range(1, num_tests + 1):
+        print(f"\rAT TEST {test_num}", end="")
 
         graph = random_graph(random_graph_create_info)
         
@@ -137,6 +135,8 @@ def random_test(
 
         if test_algorithm(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay):
             passed += 1
+        else:
+            print(f"\nFAILED AT TEST {test_num}\n")
 
     print(f"{passed} passed out of {num_tests}")
 

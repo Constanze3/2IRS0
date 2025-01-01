@@ -174,10 +174,22 @@ def test_against_baruah():
             print()
             print(algorithm_tables[node])
 
+def whatt():
+    graph = Graph({0: {6: (3, 4), 3: (1, 1)}, 1: {7: (3, 4), 2: (1, 3)}, 2: {10: (4, 4), 3:
+ (4, 4)}, 3: {7: (3, 3), 2: (1, 4)}, 4: {0: (2, 4), 6: (4, 4), 1: (3, 4)}
+, 5: {2: (3, 3), 6: (4, 4), 10: (2, 3)}, 6: {4: (2, 3)}, 7: {10: (3, 3), 
+0: (4, 4), 4: (1, 3)}, 8: {5: (1, 2), 3: (1, 1)}, 9: {0: (3, 4)}, 10: {7:
+ (1, 3), 0: (3, 3), 6: (3, 4)}})
+    
+    test_algorithm(graph, 10, (3, 7), 1)
+
+
 if __name__ == "__main__":
-    random_test(RandomGraphCreateInfo(
-        max_delay=100,
-        min_nodes=4,
-        max_nodes=6,
-        min_edges=3,
-    ))
+    # random_test(RandomGraphCreateInfo(
+    #     max_delay=100,
+    #     min_nodes=4,
+    #     max_nodes=6,
+    #     min_edges=3,
+    # ))
+
+    whatt()

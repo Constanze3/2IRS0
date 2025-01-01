@@ -103,23 +103,41 @@ class System:
     destination: Node
     routers: Dict[Node, Router]
     logs: List[str]
+    messages: List[Message]
+    processing_messages: bool
 
     def __init__(self: System, graph: Graph, destination: Node):
         self.graph = graph
         self.destination = destination
-
+        
         self.routers = {}
         for node in graph.nodes():
             incoming_edges = graph.incoming_edges(node)
             self.routers[node] = Router(self, node, incoming_edges)
+
+        self.messages = []
+        self.processing_messages = False
+
+        self.logs = []
         
         self.recalculate_tables()
         
-        self.logs = []
 
     def send(self: System, message: Message):
         self.logs.append(f"[SYSTEM] message from {message.from_node} to {message.to_node} with content {message.changes}")
-        self.routers[message.to_node].send(message)
+        self.messages.append(message)
+
+        if not self.processing_messages:
+            self.proccess_messages()
+
+    def proccess_messages(self: System):
+        self.processing_messages = True
+       
+        while self.messages:
+            message = self.messages.pop(0)
+            self.routers[message.to_node].send(message)
+
+        self.processing_messages = False
 
     def simulate_edge_change(self: System, edge: Tuple[Node, Node], new_expected_delay: int):
         (u, v) = edge

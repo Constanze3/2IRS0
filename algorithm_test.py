@@ -199,47 +199,12 @@ def random_test(
 
     print(f"{passed} passed out of {num_tests}")
 
-def test_against_baruah():
-    create_info = RandomGraphCreateInfo(
-        max_delay=10,
-        min_nodes=50,
-        max_nodes=50,
-        min_edges=3,
-    )
-    
-    graph = random_graph(create_info)
-    system = System(graph, 0)
-
-    edge = random.choice(list(graph.edges()))
-    system.simulate_edge_change((edge.from_node, edge.to_node), random.randint(0, edge.worst_case_delay))
-    
-    baruah_tables = baruah(system.graph, system.destination, relax_original)
-    
-    algorithm_tables = system.tables()
-    dom_algorithm_tables = apply_domination_to_tables(algorithm_tables)
-     
-    for (node, baruah_table) in baruah_tables.items():
-        algorithm_table = dom_algorithm_tables[node] 
-            
-        baruah_set = set([(entry.max_time, entry.expected_time) for entry in baruah_table])
-        algorithm_set = set([(entry.max_time, entry.expected_time) for entry in algorithm_table])
-
-        if baruah_set != algorithm_set:
-            print("OH NO")
-            print()
-            print(baruah_set)
-            print()
-            print(algorithm_set)
-            print()
-            print(algorithm_tables[node])
-
 def whatt():
     graph = Graph({0: {}, 1: {2: (57, 97), 3: (6, 13)}, 2: {1: (68, 68), 4: (18, 41)}, 3: {0: (8, 46), 2: (68, 86)}, 4: {3: (88, 97), 2: (8, 14)}})  
     test_algorithm(graph, 0, (1, 3), 9)
     draw_graph(graph)
 
 if __name__ == "__main__":
-    random.seed(0)
     random_test(RandomGraphCreateInfo(
         max_delay=100,
         min_nodes=4,

@@ -1,11 +1,65 @@
+from __future__ import annotations
 from algorithm import System
 from structures import Node, Graph
 from typing import Tuple, List
 from copy import deepcopy
 from dataclasses import dataclass
+from util import draw_graph
+from baruah import baruah, relax_original, apply_strict_domination_to_tables, relax_ppd_nce
 import random
 
-from baruah import baruah, relax_original, relax_ppd_nce, apply_domination_to_tables
+def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], new_expected_delay: int) -> bool:
+    original_graph = deepcopy(graph)
+
+    system = System(graph, destination)
+    system.simulate_edge_change(edge, new_expected_delay)
+    actual_tables = system.tables()
+    actual_sd_tables = apply_strict_domination_to_tables(actual_tables)
+
+    actual_simple_tables = {}
+    for (node, table) in actual_sd_tables.items():
+        simple_table = set()
+        for entry in table:
+            simple_table.add((entry.max_time, entry.parent(), entry.expected_time))
+        actual_simple_tables[node] = simple_table
+
+    expected_tables = baruah(system.graph, destination, relax_original)
+
+    expected_simple_tables = {}
+    for (node, table) in expected_tables.items():
+        simple_table = set()
+        for entry in table:
+            simple_table.add((entry.max_time, entry.parent(), entry.expected_time))
+        expected_simple_tables[node] = simple_table
+
+    if actual_simple_tables != expected_simple_tables:
+        print()
+
+        print("actual")
+        print(actual_tables)
+        print()
+
+        print("actual_sd_tables")
+        print(actual_sd_tables)
+        print()
+
+        print("expected")
+        print(expected_tables)
+        print()
+
+        print("graph data")
+        print(original_graph.data)
+        print()
+
+        print(f"destination: {destination}")
+        print(f"edge: {edge}")
+        print(f"new expected_delay: {new_expected_delay}")
+
+        return False
+
+    return True
+
+
 
 def test_algorithm(graph: Graph, destination: Node, edge: Tuple[Node, Node], new_expected_delay: int) -> bool:
     original_graph = deepcopy(graph)
@@ -17,6 +71,9 @@ def test_algorithm(graph: Graph, destination: Node, edge: Tuple[Node, Node], new
     
     system.recalculate_tables()
     expected_tables = system.tables()
+    
+    print("baruah result")
+    print()
 
     if actual_tables != expected_tables:
         print("FAIL")
@@ -54,20 +111,22 @@ def test_algorithm(graph: Graph, destination: Node, edge: Tuple[Node, Node], new
             actual = actual_tables[node]
             expected = expected_tables[node]
 
-            if actual != expected:
-                missing = actual.entries - expected.entries
-                should_not_have_been_created = expected.entries - actual.entries
+            # if actual != expected:
+            missing = actual.entries - expected.entries
+            should_not_have_been_created = expected.entries - actual.entries
 
-                print()
-                print(f"WRONG TABLE AT NODE {node}")
-                print("actual")
-                print(actual)
-                print("expected")
-                print(expected)
-                print("only in actual")
-                print(missing)
-                print("not in actual")
-                print(should_not_have_been_created)
+            print()
+            if actual != expected:
+                print(f"WRONG")
+            print(f"TABLE AT NODE {node}")
+            print("actual")
+            print(actual)
+            print("expected")
+            print(expected)
+            print("only in actual")
+            print(missing)
+            print("not in actual")
+            print(should_not_have_been_created)
 
         print()
         return False
@@ -133,7 +192,7 @@ def random_test(
         edge_to_change = random.choice(list(graph.edges()))
         new_delay = random.randint(0, edge_to_change.worst_case_delay)
 
-        if test_algorithm(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay):
+        if test_algorithm2(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay):
             passed += 1
         else:
             print(f"\nFAILED AT TEST {test_num}\n")
@@ -175,21 +234,15 @@ def test_against_baruah():
             print(algorithm_tables[node])
 
 def whatt():
-    graph = Graph({0: {6: (3, 4), 3: (1, 1)}, 1: {7: (3, 4), 2: (1, 3)}, 2: {10: (4, 4), 3:
- (4, 4)}, 3: {7: (3, 3), 2: (1, 4)}, 4: {0: (2, 4), 6: (4, 4), 1: (3, 4)}
-, 5: {2: (3, 3), 6: (4, 4), 10: (2, 3)}, 6: {4: (2, 3)}, 7: {10: (3, 3), 
-0: (4, 4), 4: (1, 3)}, 8: {5: (1, 2), 3: (1, 1)}, 9: {0: (3, 4)}, 10: {7:
- (1, 3), 0: (3, 3), 6: (3, 4)}})
-    
-    test_algorithm(graph, 10, (3, 7), 1)
-
+    graph = Graph({0: {}, 1: {2: (57, 97), 3: (6, 13)}, 2: {1: (68, 68), 4: (18, 41)}, 3: {0: (8, 46), 2: (68, 86)}, 4: {3: (88, 97), 2: (8, 14)}})  
+    test_algorithm(graph, 0, (1, 3), 9)
+    draw_graph(graph)
 
 if __name__ == "__main__":
-    # random_test(RandomGraphCreateInfo(
-    #     max_delay=100,
-    #     min_nodes=4,
-    #     max_nodes=6,
-    #     min_edges=3,
-    # ))
-
-    whatt()
+    random.seed(0)
+    random_test(RandomGraphCreateInfo(
+        max_delay=100,
+        min_nodes=4,
+        max_nodes=6,
+        min_edges=3,
+    ))

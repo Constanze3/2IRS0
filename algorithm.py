@@ -87,7 +87,7 @@ class Router:
             relax_ppd_nce(edge, new, new_table)
 
             changes = TableDiff(old, new)
-            self.system.logs.append(f"[ROUTER {self.node}] evaluating changes for edge ({edge.from_node}, {edge.to_node})")
+            self.system.logs.append(f"[ROUTER {self.node}] evaluating changes for edge ({edge})")
             self.system.logs.append(f"[ROUTER {self.node}] old table {self.table} new table {new_table} old {old} new {new} changes {changes}")
             
             if 0 < len(changes):
@@ -149,7 +149,6 @@ class System:
         Simulates the case when the graph view is distributed to every router in the network
         and routing tables are recalculated based on the uniform graph view. 
         """
-
         tables = baruah(self.graph, self.destination, relax_ppd_nce)
         for (node, table) in tables.items():
             self.routers[node].table = table

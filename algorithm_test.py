@@ -198,7 +198,7 @@ def random_test(
     max_x = -inf  # 2V + x
 
     for test_num in range(1, num_tests + 1):
-        print(f"\rAT TEST {test_num} | MAX MESSAGE COUNT 2V + ({max_x})", end="")
+        print(f"\rAT TEST {test_num} | MAX RELAX ROUNDS 2V + ({max_x})", end="")
 
         graph = random_graph(random_graph_create_info)
         
@@ -208,7 +208,8 @@ def random_test(
         result = test_algorithm2(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay)
 
         v = len(graph.nodes())
-        x = result.message_count - (2 * v)
+        e = len(graph.edges())
+        x = result.message_count // e  - (2 * v)
 
         if max_x < x:
             max_x = x

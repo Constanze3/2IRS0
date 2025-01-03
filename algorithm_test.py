@@ -6,13 +6,25 @@ from copy import deepcopy
 from dataclasses import dataclass
 from util import draw_graph
 from baruah import baruah, relax_original, apply_strict_domination_to_tables, relax_ppd_nce
+from math import inf
 import random
 
-def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], new_expected_delay: int) -> bool:
+class TestResult:
+    passed: bool
+    message_count: int
+
+    def __init__(self: TestResult, passed: bool, message_count: int):
+        self.passed = passed
+        self.message_count = message_count
+
+def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], new_expected_delay: int) -> TestResult:
     original_graph = deepcopy(graph)
 
     system = System(graph, destination)
     system.simulate_edge_change(edge, new_expected_delay)
+        
+    message_count = system.messages_sent 
+
     actual_tables = system.tables()
     actual_sd_tables = apply_strict_domination_to_tables(actual_tables)
 
@@ -55,9 +67,9 @@ def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], ne
         print(f"edge: {edge}")
         print(f"new expected_delay: {new_expected_delay}")
 
-        return False
+        return TestResult(False, message_count)
 
-    return True
+    return TestResult(True, message_count)
 
 
 
@@ -183,16 +195,25 @@ def random_test(
     num_tests: int = 10000000,
 ):
     passed = 0
+    max_x = -inf  # 2V + x
 
     for test_num in range(1, num_tests + 1):
-        print(f"\rAT TEST {test_num}", end="")
+        print(f"\rAT TEST {test_num} | MAX MESSAGE COUNT 2V + ({max_x})", end="")
 
         graph = random_graph(random_graph_create_info)
         
         edge_to_change = random.choice(list(graph.edges()))
         new_delay = random.randint(0, edge_to_change.worst_case_delay)
 
-        if test_algorithm2(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay):
+        result = test_algorithm2(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay)
+
+        v = len(graph.nodes())
+        x = result.message_count - (2 * v)
+
+        if max_x < x:
+            max_x = x
+
+        if result.passed:
             passed += 1
         else:
             print(f"\nFAILED AT TEST {test_num}\n")

@@ -2,7 +2,7 @@ from __future__ import annotations
 from structures import Node, Edge, Graph, Entry, Table
 from typing import Dict, Callable, Mapping
 
-relax_iterations = { "relax_original": lambda v: 2 * (v - 1), "relax_ppd_nce": lambda v: 2 * (v - 1)}
+relax_iterations = { "relax_original": lambda v: v - 1, "relax_ppd_nce": lambda v: 2 * (v - 1)}
 
 def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table]:
     nodes = graph.nodes()

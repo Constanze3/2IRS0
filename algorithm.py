@@ -105,6 +105,7 @@ class System:
     logs: List[str]
     messages: List[Message]
     processing_messages: bool
+    messages_sent: int
 
     def __init__(self: System, graph: Graph, destination: Node):
         self.graph = graph
@@ -119,6 +120,7 @@ class System:
         self.processing_messages = False
 
         self.logs = []
+        self.messages_sent = 0
         
         self.recalculate_tables()
         
@@ -126,6 +128,8 @@ class System:
     def send(self: System, message: Message):
         self.logs.append(f"[SYSTEM] message from {message.from_node} to {message.to_node} with content {message.changes}")
         self.messages.append(message)
+
+        self.messages_sent += 1
 
         if not self.processing_messages:
             self.proccess_messages()

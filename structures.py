@@ -274,6 +274,15 @@ class Table:
         for entry_to_remove in to_remove:
             self.entries.remove(entry_to_remove)
 
+    def remove_all_entries_with_n_parents(self: Table, n: int):
+        to_remove = []
+        for entry in self.entries:
+            if len(entry.parents) == n:
+                to_remove.append(entry)
+
+        for entry_to_remove in to_remove:
+            self.entries.remove(entry_to_remove)
+
     def __iter__(self: Table):
         return iter(self.entries)
 

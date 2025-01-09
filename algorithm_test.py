@@ -35,16 +35,28 @@ def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], ne
             simple_table.add((entry.max_time, entry.parent(), entry.expected_time))
         actual_simple_tables[node] = simple_table
 
-    expected_tables = baruah(system.graph, destination, relax_original)
+    expected_sd_tables = baruah(system.graph, destination, relax_original)
 
     expected_simple_tables = {}
-    for (node, table) in expected_tables.items():
+    for (node, table) in expected_sd_tables.items():
         simple_table = set()
         for entry in table:
             simple_table.add((entry.max_time, entry.parent(), entry.expected_time))
         expected_simple_tables[node] = simple_table
 
     if actual_simple_tables != expected_simple_tables:
+        print("FAIL")
+        print()
+
+        print("actual simple tables")
+        print(actual_simple_tables)
+        print()
+
+        print("expected simple tables")
+        print(expected_simple_tables)
+        print()
+
+        print("------------------------")
         print()
 
         print("actual")
@@ -55,8 +67,8 @@ def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], ne
         print(actual_sd_tables)
         print()
 
-        print("expected")
-        print(expected_tables)
+        print("expected_sd_tables")
+        print(expected_sd_tables)
         print()
 
         print("graph data")
@@ -66,6 +78,31 @@ def test_algorithm2(graph: Graph, destination: Node, edge: Tuple[Node, Node], ne
         print(f"destination: {destination}")
         print(f"edge: {edge}")
         print(f"new expected_delay: {new_expected_delay}")
+
+        print("------------------------")
+        print()
+
+        print("graph data")
+        print(original_graph.data)
+        print()
+
+        print("original graph")
+        print(f"{original_graph}")
+
+        print("modified graph")
+        print(f"{system.graph}")
+
+        print(f"destination: {destination}")
+        print(f"edge: {edge}")
+        print(f"new expected_delay: {new_expected_delay}")
+        print()
+
+        print("SYSTEM LOGS")
+        for log in system.logs:
+            print(log)
+
+        print()
+
 
         return TestResult(False, message_count)
 
@@ -195,23 +232,29 @@ def random_test(
     num_tests: int = 10000000,
 ):
     passed = 0
+    max_e = -inf
     max_x = -inf  # 2V + x
 
     for test_num in range(1, num_tests + 1):
-        print(f"\rAT TEST {test_num} | MAX RELAX ROUNDS 2V + ({max_x})", end="")
+        print(f"\rAT TEST {test_num} | MAX RELAX ROUNDS V + ({max_x}) | ({max_e}) |", end="")
 
         graph = random_graph(random_graph_create_info)
         
-        edge_to_change = random.choice(list(graph.edges()))
+        l = [edge for edge in list(graph.edges()) if edge.to_node == 0 ]
+        if not l:
+            continue
+
+        edge_to_change = random.choice(l)
         new_delay = random.randint(0, edge_to_change.worst_case_delay)
 
         result = test_algorithm2(graph, 0, (edge_to_change.from_node, edge_to_change.to_node), new_delay)
 
         v = len(graph.nodes())
         e = len(graph.edges())
-        x = result.message_count // e  - (2 * v)
+        x = result.message_count // e  - (v)
 
         if max_x < x:
+            max_e = result.message_count // e
             max_x = x
 
         if result.passed:
@@ -227,9 +270,10 @@ def whatt():
     draw_graph(graph)
 
 if __name__ == "__main__":
+    random.seed(12)
     random_test(RandomGraphCreateInfo(
         max_delay=100,
         min_nodes=4,
-        max_nodes=6,
+        max_nodes=10,
         min_edges=3,
     ))

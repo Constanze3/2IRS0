@@ -1,15 +1,15 @@
 from __future__ import annotations
 from baruah import baruah, relax_ppd_nce
-from structures import Node, Edge, Graph, Table, TableDiff
+from structures import Entry, Node, Edge, Graph, Table, TableDiff
 from typing import Dict, List, Tuple
 from copy import deepcopy
 
 class Message:
-    from_node: Node
+    from_node: Node | None
     to_node: Node
     changes: TableDiff
 
-    def __init__(self: Message, from_node: Node, to_node: Node, changes: TableDiff):
+    def __init__(self: Message, from_node: Node | None, to_node: Node, changes: TableDiff):
         self.from_node = from_node
         self.to_node = to_node
         self.changes = changes
@@ -53,12 +53,15 @@ class Router:
             
             if original_edge.worst_case_delay != new_edge.worst_case_delay:
                 raise ValueError("worst case delay should not change")
+
+            considered_table = deepcopy(self.table)
+            considered_table.remove_all_entries_with_n_parents(len(self.system.graph.nodes()) - 1)
             
             old = Table() 
-            relax_ppd_nce(original_edge, old, self.table)
+            relax_ppd_nce(original_edge, old, considered_table)
 
             new = Table()
-            relax_ppd_nce(new_edge, new, self.table)
+            relax_ppd_nce(new_edge, new, considered_table)
 
             changes = TableDiff(old, new)
             
@@ -76,20 +79,28 @@ class Router:
         """
         to_send = []
 
+        considered_table = deepcopy(self.table)
+        considered_table.remove_all_entries_with_n_parents(len(self.system.graph.nodes()) - 1)
+
         new_table = deepcopy(self.table)
         message.changes.apply(new_table)
 
+        new_considered_table = deepcopy(new_table)
+        new_considered_table.remove_all_entries_with_n_parents(len(self.system.graph.nodes()) - 1)
+
         for edge in self.incoming_edges:
             old = Table()
-            relax_ppd_nce(edge, old, self.table)
+            relax_ppd_nce(edge, old, considered_table)
 
             new = Table()
-            relax_ppd_nce(edge, new, new_table)
+            relax_ppd_nce(edge, new, new_considered_table)
 
             changes = TableDiff(old, new)
             self.system.logs.append(f"[ROUTER {self.node}] evaluating changes for edge ({edge})")
-            self.system.logs.append(f"[ROUTER {self.node}] old table {self.table} new table {new_table} old {old} new {new} changes {changes}")
-            
+            self.system.logs.append(f"[ROUTER {self.node}] old table {self.table} new table {new_table}")
+            self.system.logs.append(f"[ROUTER {self.node}] old considered table {considered_table} new considered table {new_considered_table}")
+            self.system.logs.append(f"[ROUTER {self.node}] old {old} new {new} changes {changes}")
+
             if 0 < len(changes):
                 to_send.append(Message(self.node, edge.from_node, changes))
         
@@ -122,8 +133,8 @@ class System:
         self.logs = []
         self.messages_sent = 0
         
-        self.recalculate_tables()
-        
+        diff = TableDiff(Table(), Table(set([Entry(0, [], 0)])))
+        self.send(Message(None, destination, diff))
 
     def send(self: System, message: Message):
         self.logs.append(f"[SYSTEM] message from {message.from_node} to {message.to_node} with content {message.changes}")

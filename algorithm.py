@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 from baruah import baruah, relax_ppd_nce
 from structures import Entry, Node, Edge, Graph, Table, TableDiff
 from typing import Dict, List, Tuple
@@ -155,6 +156,7 @@ class System:
         self.processing_messages = False
 
     def simulate_edge_change(self: System, edge: Tuple[Node, Node], new_expected_delay: int):
+        self.messages_sent = 0
         (u, v) = edge
         self.graph.modify_edge_weights(u, v, new_expected_delay=new_expected_delay)
         self.routers[v].update_incoming_edges(self.graph.incoming_edges(v))

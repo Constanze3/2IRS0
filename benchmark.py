@@ -1,5 +1,5 @@
-import cProfile
 from copy import deepcopy
+import math
 from multiprocessing import Manager, Pool
 from algorithm import System
 from structures import Node, Graph, Edge
@@ -11,9 +11,7 @@ import timeit
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import yappi
-
+from typing import Dict
 
 def random_weights(max_delay: int) -> Tuple[int, int]:
     typical_delay = random.randint(1, max_delay)
@@ -34,6 +32,12 @@ class RandomBenchmarkCreateInfo:
     graph_create_info: RandomGraphCreateInfo
     num_runs: int
     verify_against_baruah: bool = False
+
+@dataclass
+class BenchmarkResult:
+    algo_time: float
+    baruah_time: float
+    messages_sent: int
 
 
 def random_graph(create_info: RandomGraphCreateInfo) -> Graph:
@@ -122,15 +126,15 @@ def run_single_benchmark_task(args):
         )
         / 10e6
     )
+    messages_sent = system.messages_sent
     baruah_time = (
         timeit.timeit(
             lambda: system.recalculate_tables(), timer=time.perf_counter_ns, number=1
         )
         / 10e6
     )
-    # baruah_time = 0
 
-    return algo_time, baruah_time
+    return BenchmarkResult(algo_time, baruah_time, messages_sent)
 
 
 def increasing_graph_size_benchmark(initial_graph_info, num_runs):
@@ -149,22 +153,12 @@ def increasing_graph_size_benchmark(initial_graph_info, num_runs):
         tasks.extend([(num_nodes, create_info) for _ in range(num_runs)])
 
 
-    # plt.ion()             # Turn interactive mode on
+    # Turn interactive mode on
     fig, ax = plt.subplots()
-
-    # Plot placeholders
-    # (line1,) = ax.plot([5], [5], "o", label="Algorithm")
-    # (line2,) = ax.plot([6], [6], "o", label="Baruah")
-
-    # algorithm_lines = []
-    # baruah_lines = []
-    # for i in range(1, num_runs + 1):
-    #     algorithm_lines.append(ax.plot([], [], "o", label="Algorithm"))
-    #     # (line2,) = ax.plot([], [], "o", label="Baruah")
-    #     baruah_lines.append(ax.plot([], [], "o", label="Baruah"))
 
     algo_line, = ax.plot([], [], "o", label="Algorithm")
     baruah_line, = ax.plot([], [], "o", label="Baruah")
+    messages_line, = ax.plot([], [], "o", label="Messages")
 
     ax.legend()
     ax.set_autoscaley_on(True)
@@ -178,11 +172,11 @@ def increasing_graph_size_benchmark(initial_graph_info, num_runs):
     def cb(results):
         node_range = range(initial_graph_info.min_nodes, initial_graph_info.max_nodes + 1)
         # dict mapping each size to a list of results
-        size_to_results = {}
+        size_to_results : Dict[int, List[BenchmarkResult]] = {}
 
         i = 0
         for j, result in enumerate(results):
-            size = initial_graph_info.min_nodes + i
+            size: int = initial_graph_info.min_nodes + i
             if size not in size_to_results:
                 size_to_results[size] = []
             size_to_results[size].append(result)
@@ -197,15 +191,21 @@ def increasing_graph_size_benchmark(initial_graph_info, num_runs):
 
         y = []
         for size in size_to_results:
-            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i][0] for i in range(num_runs)])
+            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i].algo_time for i in range(num_runs)])
         algo_line.set_ydata(y)
 
         baruah_line.set_xdata(x)
 
         y = []
         for size in size_to_results:
-            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i][1] for i in range(num_runs)])
+            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i].baruah_time for i in range(num_runs)])
         baruah_line.set_ydata(y)
+
+        messages_line.set_xdata(x)
+        y = []
+        for size in size_to_results:
+            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i].messages_sent for i in range(num_runs)])
+        messages_line.set_ydata(y)
 
         ax.relim()
         ax.autoscale_view()
@@ -222,21 +222,73 @@ def increasing_graph_size_benchmark(initial_graph_info, num_runs):
     algo_times = [r[0] for r in res]
     baruah_times = [r[1] for r in res]
 
-    # Compute average times per graph size
-    algo_times_avg_per_size = []
-    baruah_times_avg_per_size = []
+    input("Press Enter to close the plot...")
 
-    # We'll need to index into the results in blocks of size num_runs
-    idx = 0
+def graph_size_vs_messages_benchmark(initial_graph_info, num_runs):
+    # Prepare a list of tasks (args) to process in parallel
+    tasks = []
     for num_nodes in range(
         initial_graph_info.min_nodes, initial_graph_info.max_nodes + 1
     ):
-        size_algo_times = algo_times[idx : idx + num_runs]
-        size_baruah_times = baruah_times[idx : idx + num_runs]
-        idx += num_runs
+        create_info = RandomGraphCreateInfo(
+            max_delay=initial_graph_info.max_delay,
+            min_nodes=num_nodes,
+            max_nodes=num_nodes,
+            min_edges=initial_graph_info.min_edges,
+        )
+        # Repeat (num_nodes, create_info) for 'num_runs' times
+        tasks.extend([(num_nodes, create_info) for _ in range(num_runs)])
 
-        algo_times_avg_per_size.append(np.mean(size_algo_times))
-        baruah_times_avg_per_size.append(np.mean(size_baruah_times))
+
+    # Turn interactive mode on
+    fig, ax = plt.subplots()
+    messages_line, = ax.plot([], [], "o", label="Messages")
+
+    ax.legend()
+    ax.set_autoscaley_on(True)
+
+    # ax.set_xlabel("Number of nodes")
+    ax.set_xlabel("Number of nodes")
+    ax.set_ylabel("Total messages sent")
+    ax.set_xscale("linear")
+    
+
+    def cb(results):
+        node_range = range(initial_graph_info.min_nodes, initial_graph_info.max_nodes + 1)
+        # dict mapping each size to a list of results
+        size_to_results : Dict[int, List[BenchmarkResult]] = {}
+
+        i = 0
+        for j, result in enumerate(results):
+            size: int = initial_graph_info.min_nodes + i
+            if size not in size_to_results:
+                size_to_results[size] = []
+            size_to_results[size].append(result)
+            if j % num_runs == num_runs - 1:
+                i += 1
+                
+        x = []
+        for i in node_range:
+            x.extend([i] * num_runs)
+        
+        messages_line.set_xdata(x)
+        y = []
+        for size in size_to_results:
+            y.extend([None if size_to_results[size][i] is None else size_to_results[size][i].messages_sent for i in range(num_runs)])
+        messages_line.set_ydata(y)
+
+        ax.relim()
+        ax.autoscale_view()
+
+        # Redraw
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
+        plt.show(block=False)  # Show the figure in non-blocking mode
+
+    res = parallel_benchmark(run_single_benchmark_task, tasks, callback=cb)
+
+    input("Press Enter to close the plot...")
 
 
 def parallel_benchmark(
@@ -307,4 +359,5 @@ if __name__ == "__main__":
     )
     # random_benchmark(create_info)
     # cProfile.run("increasing_graph_size_benchmark(create_info.graph_create_info, 5)", sort="tottime")
-    increasing_graph_size_benchmark(create_info.graph_create_info, 10)
+    # increasing_graph_size_benchmark(create_info.graph_create_info, 10)
+    graph_size_vs_messages_benchmark(create_info.graph_create_info, 10)

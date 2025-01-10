@@ -132,7 +132,7 @@ class Graph:
                 result += "    None\n"
             for (v, weights) in edges.items():
                 result += f"    -({weights[0]}, {weights[1]})-> {v}\n"
-
+                
         return result 
 
 class Entry:

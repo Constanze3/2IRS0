@@ -51,8 +51,8 @@ class Router:
             if original_edge == None:
                 raise ValueError("there should be no completely new edges")
             
-            if original_edge.worst_case_delay != new_edge.worst_case_delay:
-                raise ValueError("worst case delay should not change")
+            # if original_edge.worst_case_delay != new_edge.worst_case_delay:
+            #     raise ValueError("worst case delay should not change")
             
             old = Table() 
             relax_ppd_nce(original_edge, old, self.table)

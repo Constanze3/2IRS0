@@ -1,5 +1,8 @@
+from __future__ import annotations
 from structures import Node, Edge, Graph, Entry, Table
 from typing import Dict, Callable, Mapping
+
+relax_iterations = { "relax_original": lambda v: v - 1, "relax_ppd_nce": lambda v: v - 1}
 
 def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table]:
     nodes = graph.nodes()
@@ -10,7 +13,12 @@ def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table
         tables[node] = Table()
     tables[destination] = Table(entries=set([Entry(0, [], 0)]))
 
-    for _ in range(len(nodes)):
+    relax_name = getattr(relax, "__name__", "unknown")
+    if not relax_name in relax_iterations.keys():
+        raise ValueError("relax is not a valid relaxation function")
+
+    iterations = relax_iterations[relax_name](len(nodes))
+    for _ in range(iterations):
         for edge in edges:
             relax(edge, tables[edge.from_node], tables[edge.to_node])
 
@@ -40,7 +48,7 @@ def relax_original(edge: Edge, from_node_table: Table, to_node_table: Table):
         parents.insert(0, v)
 
         new_entry = Entry(max_time, parents, expected_time)
-        table_u.insert_d(new_entry)
+        table_u.insert_sd(new_entry)
 
 def relax_ppd_nce(edge: Edge, from_node_table: Table, to_node_table: Table):
     """
@@ -75,12 +83,12 @@ def relax_ppd_nce(edge: Edge, from_node_table: Table, to_node_table: Table):
         new_entry = Entry(max_time, parents, expected_time)
         table_u.insert_ppd(new_entry)
 
-def apply_domination_to_tables(tables: Mapping[Node, Table]) -> Dict[Node, Table]:
+def apply_strict_domination_to_tables(tables: Mapping[Node, Table]) -> Dict[Node, Table]:
     result = {}
     for (node, table) in tables.items():
         new_table = Table()
         for entry in table:
-            new_table.insert_d(entry)
+            new_table.insert_sd(entry)
         result[node] = new_table
 
     return result

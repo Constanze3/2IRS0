@@ -132,7 +132,7 @@ class Graph:
                 result += "    None\n"
             for (v, weights) in edges.items():
                 result += f"    -({weights[0]}, {weights[1]})-> {v}\n"
-
+                
         return result 
 
 class Entry:
@@ -153,13 +153,21 @@ class Entry:
         
     def dominates(self: Entry, other: Entry) -> bool:
         return self.max_time <= other.max_time and self.expected_time <= other.expected_time
+
+    def strictly_dominates(self: Entry, other: Entry) -> bool:
+        if self.max_time < other.max_time and self.expected_time <= other.expected_time:
+            return True
+        
+        if self.max_time == other.max_time and self.expected_time < other.expected_time:
+            return True
+
+        return False
     
     def equivalent(self: Entry, other: Entry) -> bool:
         """
         Checks whether an entry has the same max time and expected time as an `other` entry.
         """
         return self.max_time == other.max_time and self.expected_time == other.expected_time
-        
 
     def __eq__(self: Entry, other: object):
         if type(other) == Entry:
@@ -198,6 +206,26 @@ class Table:
                 should_insert = False
                 break
             elif entry.dominates(existing_entry):
+                to_remove.append(existing_entry)
+                    
+        for entry_to_remove in to_remove:
+            self.entries.remove(entry_to_remove)
+        
+        if should_insert:
+            self.entries.add(entry)
+
+    def insert_sd(self: Table, entry: Entry) -> None:
+        """
+        Inserts the `entry` in the `table` with strict dominaion checks.
+        """
+        should_insert = True
+        to_remove = []
+
+        for existing_entry in self.entries:
+            if existing_entry.strictly_dominates(entry):
+                should_insert = False
+                break
+            elif entry.strictly_dominates(existing_entry):
                 to_remove.append(existing_entry)
                     
         for entry_to_remove in to_remove:
@@ -246,6 +274,15 @@ class Table:
         for entry_to_remove in to_remove:
             self.entries.remove(entry_to_remove)
 
+    def remove_all_entries_with_n_parents(self: Table, n: int):
+        to_remove = []
+        for entry in self.entries:
+            if len(entry.parents) == n:
+                to_remove.append(entry)
+
+        for entry_to_remove in to_remove:
+            self.entries.remove(entry_to_remove)
+
     def __iter__(self: Table):
         return iter(self.entries)
 
@@ -258,7 +295,7 @@ class Table:
     def __repr__(self: Table):
         return str(self)
     
-    def __eq__(self, other: object):
+    def __eq__(self: Table, other: object):
         if type(other) == Table:
             return self.entries == other.entries
         else:

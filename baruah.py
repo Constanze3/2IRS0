@@ -1,105 +1,94 @@
-from typing import Any, Mapping, Tuple, List, Dict
-from random import shuffle
+from __future__ import annotations
+from structures import Node, Edge, Graph, Entry, Table
+from typing import Dict, Callable, Mapping
 
-Node = Any
-Edge = Tuple[Any, Any]
-Graph = Mapping[Node, Mapping[Node, Mapping[str, Any]]]
+relax_iterations = { "relax_original": lambda v: v - 1, "relax_ppd_nce": lambda v: v - 1}
 
-Entry = Tuple[float, Node | None, float]
-Table = List[Entry] 
-Tables = Dict[Node, Table]
+def baruah(graph: Graph, destination: Node, relax: Callable) -> Dict[Node, Table]:
+    nodes = graph.nodes()
+    edges = graph.edges()
 
-def baruah(graph: Graph, destination: Node, keep_entries: bool) -> Tables:
-    """
-    Runs Baruah's routing algorithm.
-
-    'graph' adjacency list of the graph.
-    'destination' the destination node.
-    'keep_entries' will make sure for the routing tables of each node to keep a routing table entry for each neighboring node.
-    """
-
-    # get list of nodes and edges of the graph
-    nodes = graph.keys()
-    edges = []
-    for u, neighbors in graph.items():
-        for v, weights in neighbors.items():
-            edges.append((u, v, weights["typical_delay"], weights["max_delay"]))
-    
-    shuffle(edges)
-
-    # initialization
-    tab: Tables = {}
+    tables: Dict[Node, Table] = {}
     for node in nodes:
-        tab[node] = []
-    tab[destination] = [(0, None, 0)]
+        tables[node] = Table()
+    tables[destination] = Table(entries=set([Entry(0, [], 0)]))
 
-    def relax(edge):
-        # u, v are the start and end vertices of the edge
-        # c_w is the worst case delay traversing the edge
-        # c_t is the estimate of the typical delay when traversing the edge
-        u, v, c_t, c_w = edge
+    relax_name = getattr(relax, "__name__", "unknown")
+    if not relax_name in relax_iterations.keys():
+        raise ValueError("relax is not a valid relaxation function")
 
-        # this function attempts to use the entries in tab[v] to update tab[u]
+    iterations = relax_iterations[relax_name](len(nodes))
+    for _ in range(iterations):
+        for edge in edges:
+            relax(edge, tables[edge.from_node], tables[edge.to_node])
 
-        if not tab[v]:
-            # the tab[v] is empty there is nothing to update the tab[u] with
-            return
+    return tables
 
-        # tab[v], = informs us
-        # of a path from v to the destinaton with
-        # worst-case delay bound d_v and typical delay de_v
-        # the next node along this path is p_v
+def relax_original(edge: Edge, from_node_table: Table, to_node_table: Table):
+    """
+    The relaxation function from the paper Rapid Routing with Guaranteed Delay Bounds.
+    Updates `from_node_table`.
+    """
+    table_u = from_node_table
+    v = edge.to_node
+    table_v = to_node_table
 
-        # d_min is the smallest worst-case delay bound from u to the destination
-        d_min = c_w + min([d_v for d_v, p_v, de_v in tab[v]])
+    if len(table_v.entries) == 0:
+        # the table_v is empty there is nothing to update the table_u with
+        return
 
-        for d_v, p_v, de_v in tab[v]:
-            # d is a worst case delay bound
-            # it's exact definition is complicated
-            d = max(d_min, c_t + d_v)
-            de = de_v + c_t
+    # min_max_time (d_min) is the smallest worst-case delay bound from u to the destination
+    min_max_time = edge.worst_case_delay + min([entry.max_time for entry in table_v.entries])
 
-            entry_count = {}
-            if keep_entries:
-                for neighbor in graph[u].keys():
-                    entry_count[neighbor] = 0
-                    for d_u, p_u, de_u in tab[u]:
-                        if p_u == neighbor:
-                            entry_count[neighbor] += 1
-            
-                # if there are no entries with v as the parent we insert v
-                if entry_count[v] == 0:
-                    tab[u].append((d, v, de))
-                    return
-                
-            insert = True
+    for entry in table_v.entries:
+        max_time = max(min_max_time, entry.max_time + edge.expected_delay)
+        expected_time = entry.expected_time + edge.expected_delay
 
-            for d_u, p_u, de_u in tab[u]:
-                if d_u <= d and de_u <= de:
-                    # our new entry is dominated by an existing entry, it should not be inserted
-                    # -> there are no entries in the table that this entry dominates
-                    insert = False
-                    break
-                elif d_u >= d and de_u >= de:
-                    # existing entry is dominated by our new entry 
-                    # -> our new entry is definitely in the table
-                    if not keep_entries or entry_count[p_u] > 1 or v == p_u:
-                        # we make sure that there is at least one entry with p_u
-                        tab[u].remove((d_u, p_u, de_u))
+        parents = entry.parents.copy()
+        parents.insert(0, v)
 
-            if insert:
-                tab[u].append((d, v, de))
+        new_entry = Entry(max_time, parents, expected_time)
+        table_u.insert_sd(new_entry)
 
-    my_edges = [(1, 3, 10, 12), (1, 2, 5, 12), (2, 3, 5, 12)]
-    my_edges2 = [(1, 3, 10, 24), (1, 2, 5, 6),  (2, 3, 5, 6)]
+def relax_ppd_nce(edge: Edge, from_node_table: Table, to_node_table: Table):
+    """
+    Baruah relaxation with per parent domination and no cyclic entries. 
+    Updates `from_node_table`.
+    """
+    u = edge.from_node
+    table_u = from_node_table
+    v = edge.to_node
+    table_v = to_node_table
 
+    table_u.remove_all_entries_with_parent(v)
 
-    for i in range(len(nodes) - 1):
-        for edge in my_edges:
-            relax(edge)
+    if len(table_v.entries) == 0:
+        # the table_v is empty there is nothing to update the table_u with
+        return
 
-   # since tables are a set of entries having them as a sorted list is convenient
-    for table in tab.values():
-        table.sort()
+    # min_max_time (d_min) is the smallest worst-case delay bound from u to the destination
+    min_max_time = edge.worst_case_delay + min([entry.max_time for entry in table_v.entries])
 
-    return tab
+    for entry in table_v.entries:
+        if u in entry.parents:
+            # cyclic enties should not be generated
+            continue
+
+        max_time = max(min_max_time, entry.max_time + edge.expected_delay)
+        expected_time = entry.expected_time + edge.expected_delay
+
+        parents = entry.parents.copy()
+        parents.insert(0, v)
+
+        new_entry = Entry(max_time, parents, expected_time)
+        table_u.insert_ppd(new_entry)
+
+def apply_strict_domination_to_tables(tables: Mapping[Node, Table]) -> Dict[Node, Table]:
+    result = {}
+    for (node, table) in tables.items():
+        new_table = Table()
+        for entry in table:
+            new_table.insert_sd(entry)
+        result[node] = new_table
+
+    return result
